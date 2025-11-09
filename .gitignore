@@ -4,6 +4,7 @@ __pycache__/
 *.env
 instance/study_cards.db
 venv/
+uploads/
 
 # Node
 node_modules/
