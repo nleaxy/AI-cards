@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { BookOpen, Upload, BarChart3 } from 'lucide-react';
+import { BookOpen, Upload, BarChart3, Layers } from 'lucide-react';
 
 const Header = () => {
   const location = useLocation();
@@ -29,6 +29,13 @@ const Header = () => {
           >
             <Upload size={20} />
             <span>Загрузить</span>
+          </Link>
+          <Link 
+            to="/decks" 
+            className={`nav-link ${isActive('/decks') ? 'active' : ''}`}
+          >
+            <Layers size={20} />
+            <span>Колоды</span>
           </Link>
           <Link 
             to="/review" 

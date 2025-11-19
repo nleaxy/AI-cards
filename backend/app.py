@@ -5,8 +5,8 @@ import os
 from config import Config
 import PyPDF2
 from ai_service import generate_cards_from_text, get_mock_stats
-from models import db, User, Deck, Card, StudySession
 from datetime import datetime, date
+from models import db, User, Deck, Card, StudySession, UserStats
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -28,6 +28,12 @@ with app.app_context():
     if not User.query.filter_by(username='test_user').first():
         test_user = User(username='test_user', email='test@example.com')
         db.session.add(test_user)
+        db.session.flush()
+        
+        # Создаём запись статистики
+        user_stats = UserStats(user_id=test_user.id)
+        db.session.add(user_stats)
+        
         db.session.commit()
         print("Создан тестовый пользователь: test_user")
 
@@ -212,6 +218,12 @@ def upload_file():
             db.session.add(card)
         
         db.session.commit()
+
+        # Увеличиваем счетчик созданных колод
+        user_stats = UserStats.query.filter_by(user_id=test_user.id).first()
+        if user_stats:
+            user_stats.total_decks_created += 1
+            db.session.commit()
         
         result['mode'] = mode
         result['deck_id'] = deck.id
@@ -229,32 +241,16 @@ def upload_file():
 def get_stats():
     test_user = User.query.filter_by(username='test_user').first()
     
-    total_decks = Deck.query.filter_by(user_id=test_user.id).count()
+    # Получаем статистику пользователя
+    user_stats = UserStats.query.filter_by(user_id=test_user.id).first()
     
-    # Подсчитываем изученные карточки
-    cards_studied = db.session.query(db.func.sum(StudySession.cards_studied))\
-        .filter_by(user_id=test_user.id).scalar() or 0
+    if not user_stats:
+        # Создаём если не существует
+        user_stats = UserStats(user_id=test_user.id)
+        db.session.add(user_stats)
+        db.session.commit()
     
-    # Подсчитываем streak (дней подряд)
-    sessions = StudySession.query.filter_by(user_id=test_user.id)\
-        .order_by(StudySession.date.desc()).all()
-    
-    current_streak = 0
-    if sessions:
-        current_date = date.today()
-        for session in sessions:
-            if session.date == current_date or \
-               (current_date - session.date).days == current_streak:
-                current_streak += 1
-                current_date = session.date
-            else:
-                break
-    
-    return jsonify({
-        'total_decks': total_decks,
-        'cards_studied': cards_studied,
-        'current_streak': current_streak
-    }), 200
+    return jsonify(user_stats.to_dict()), 200
 
 
 # Новый endpoint: получить все колоды
@@ -275,7 +271,6 @@ def get_deck(deck_id):
     return jsonify(deck.to_dict(include_cards=True)), 200
 
 
-# Новый endpoint: записать результаты сессии
 @app.route('/api/sessions', methods=['POST'])
 def create_session():
     data = request.json
@@ -289,14 +284,33 @@ def create_session():
         duration_seconds=data.get('duration_seconds', 0)
     )
     
-    # Обновляем статистику карточек
+    # Получаем статистику пользователя
+    user_stats = UserStats.query.filter_by(user_id=test_user.id).first()
+    if not user_stats:
+        user_stats = UserStats(user_id=test_user.id)
+        db.session.add(user_stats)
+        db.session.flush()
+    
+    # Обрабатываем результаты по карточкам
     for card_result in data.get('card_results', []):
         card = Card.query.get(card_result['card_id'])
         if card:
             card.times_studied += 1
+            card.last_studied = datetime.utcnow()
+            
             if card_result['correct']:
                 card.times_correct += 1
-            card.last_studied = datetime.utcnow()
+                
+                # Добавляем в изученные уникальные карточки
+                is_new = user_stats.add_unique_card(card.id)
+                
+                # Обновляем серию только если карточка уникальна для текущей серии
+                if card_result.get('is_streak_card', False):
+                    user_stats.increment_streak(card.id)
+            else:
+                # При неправильном ответе сбрасываем серию
+                if card_result.get('reset_streak', False):
+                    user_stats.reset_streak()
     
     # Обновляем время последнего изучения колоды
     deck = Deck.query.get(data['deck_id'])
@@ -306,7 +320,24 @@ def create_session():
     db.session.add(session)
     db.session.commit()
     
-    return jsonify(session.to_dict()), 201
+    return jsonify({
+        **session.to_dict(),
+        'user_stats': user_stats.to_dict()
+    }), 201
+
+
+# Новый endpoint: сброс статистики
+@app.route('/api/stats/reset', methods=['POST'])
+def reset_stats():
+    test_user = User.query.filter_by(username='test_user').first()
+    user_stats = UserStats.query.filter_by(user_id=test_user.id).first()
+    
+    if user_stats:
+        user_stats.reset_stats()
+        db.session.commit()
+        return jsonify({'message': 'Статистика сброшена', 'stats': user_stats.to_dict()}), 200
+    
+    return jsonify({'error': 'Статистика не найдена'}), 404
 
 # Обновить карточку
 @app.route('/api/cards/<int:card_id>', methods=['PUT'])
@@ -351,6 +382,14 @@ def create_card(deck_id):
     db.session.commit()
     
     return jsonify(card.to_dict()), 201
+
+# Удалить колоду
+@app.route('/api/decks/<int:deck_id>', methods=['DELETE'])
+def delete_deck(deck_id):
+    deck = Deck.query.get_or_404(deck_id)
+    db.session.delete(deck)
+    db.session.commit()
+    return jsonify({'message': 'Колода удалена'}), 200
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

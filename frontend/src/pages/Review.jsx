@@ -1,15 +1,39 @@
 import React, { useEffect, useState } from 'react';
-import { BarChart3, Calendar, Award, TrendingUp } from 'lucide-react';
+import { BarChart3, BookOpen, CheckCircle, Flame, RotateCcw } from 'lucide-react';
+import Modal from '../components/Modal';
 
 const Review = () => {
   const [stats, setStats] = useState(null);
+  const [resetModal, setResetModal] = useState(false);
 
   useEffect(() => {
+    loadStats();
+  }, []);
+
+  const loadStats = () => {
     fetch('http://localhost:5000/api/stats')
       .then(res => res.json())
       .then(data => setStats(data))
       .catch(err => console.error(err));
-  }, []);
+  };
+
+  const handleResetStats = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/stats/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (response.ok) {
+        loadStats();
+      } else {
+        alert('Ошибка при сбросе статистики');
+      }
+    } catch (error) {
+      console.error('Error resetting stats:', error);
+      alert('Ошибка соединения');
+    }
+  };
 
   if (!stats) {
     return (
@@ -26,95 +50,70 @@ const Review = () => {
         <p>Отслеживайте свой прогресс в обучении</p>
       </div>
 
-      <div className="stats-dashboard">
-        <div className="dashboard-card">
-          <div className="dashboard-card-header">
-            <BarChart3 size={24} />
-            <h3>Общий прогресс</h3>
+      <div className="stats-dashboard-simple">
+        <div className="stat-card-large">
+          <div className="stat-card-icon">
+            <BookOpen size={48} />
           </div>
-          <div className="dashboard-stats">
-            <div className="dashboard-stat">
-              <span className="stat-icon">📚</span>
-              <div>
-                <div className="stat-value">{stats.total_decks}</div>
-                <div className="stat-label">Колод создано</div>
-              </div>
-            </div>
-            <div className="dashboard-stat">
-              <span className="stat-icon">✅</span>
-              <div>
-                <div className="stat-value">{stats.cards_studied}</div>
-                <div className="stat-label">Карточек изучено</div>
-              </div>
+          <div className="stat-card-content">
+            <div className="stat-card-value">{stats.total_decks}</div>
+            <div className="stat-card-label">Колод создано</div>
+            <div className="stat-card-description">
+              Всего колод, включая удалённые
             </div>
           </div>
         </div>
 
-        <div className="dashboard-card">
-          <div className="dashboard-card-header">
-            <Calendar size={24} />
-            <h3>Активность</h3>
+        <div className="stat-card-large">
+          <div className="stat-card-icon stat-icon-success">
+            <CheckCircle size={48} />
           </div>
-          <div className="dashboard-stats">
-            <div className="dashboard-stat">
-              <span className="stat-icon">🔥</span>
-              <div>
-                <div className="stat-value">{stats.current_streak}</div>
-                <div className="stat-label">Дней подряд</div>
-              </div>
-            </div>
-            <div className="dashboard-stat">
-              <span className="stat-icon">📅</span>
-              <div>
-                <div className="stat-value">5</div>
-                <div className="stat-label">Дней на этой неделе</div>
-              </div>
+          <div className="stat-card-content">
+            <div className="stat-card-value">{stats.cards_studied}</div>
+            <div className="stat-card-label">Уникальных карточек</div>
+            <div className="stat-card-description">
+              Изучено уникальных карточек всего
             </div>
           </div>
         </div>
 
-        <div className="dashboard-card">
-          <div className="dashboard-card-header">
-            <Award size={24} />
-            <h3>Достижения</h3>
+        <div className="stat-card-large">
+          <div className="stat-card-icon stat-icon-fire">
+            <Flame size={48} />
           </div>
-          <div className="achievements">
-            <div className="achievement unlocked">
-              <span className="achievement-icon">🎯</span>
-              <div className="achievement-info">
-                <div className="achievement-name">Первые шаги</div>
-                <div className="achievement-desc">Создайте первую колоду</div>
-              </div>
-            </div>
-            <div className="achievement unlocked">
-              <span className="achievement-icon">📖</span>
-              <div className="achievement-info">
-                <div className="achievement-name">Книжный червь</div>
-                <div className="achievement-desc">Изучите 50 карточек</div>
-              </div>
-            </div>
-            <div className="achievement locked">
-              <span className="achievement-icon">🔒</span>
-              <div className="achievement-info">
-                <div className="achievement-name">Мастер памяти</div>
-                <div className="achievement-desc">Серия из 20 правильных ответов</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="dashboard-card">
-          <div className="dashboard-card-header">
-            <TrendingUp size={24} />
-            <h3>Тенденция</h3>
-          </div>
-          <div className="trend-chart">
-            <div className="chart-placeholder">
-              <p>📈 График прогресса появится после нескольких дней обучения</p>
+          <div className="stat-card-content">
+            <div className="stat-card-value">{stats.max_streak}</div>
+            <div className="stat-card-label">Макс. серия верных</div>
+            <div className="stat-card-description">
+              Лучший результат уникальных правильных ответов подряд
             </div>
           </div>
         </div>
       </div>
+
+      <div className="stats-info">
+        <BarChart3 size={32} className="info-icon" />
+        <h3>Ваша статистика сохраняется автоматически</h3>
+        <p>Все данные привязаны к вашему аккаунту и будут доступны после авторизации</p>
+        
+        <button 
+          className="btn btn-wrong btn-reset-stats"
+          onClick={() => setResetModal(true)}
+        >
+          <RotateCcw size={18} />
+          <span>Сбросить статистику</span>
+        </button>
+      </div>
+
+      <Modal
+        isOpen={resetModal}
+        onClose={() => setResetModal(false)}
+        onConfirm={handleResetStats}
+        title="Сбросить статистику?"
+        message="Вы уверены, что хотите сбросить всю статистику? Это действие нельзя отменить. Колоды и карточки не будут удалены."
+        confirmText="Сбросить"
+        danger={true}
+      />
     </div>
   );
 };

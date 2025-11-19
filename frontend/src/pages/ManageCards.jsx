@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Edit2, Trash2, Plus, Save, X } from 'lucide-react';
+import Modal from '../components/Modal';
 
 const ManageCards = () => {
   const { deckId } = useParams();
@@ -11,6 +12,7 @@ const ManageCards = () => {
   const [editForm, setEditForm] = useState({ question: '', answer: '', source: '' });
   const [showAddForm, setShowAddForm] = useState(false);
   const [newCard, setNewCard] = useState({ question: '', answer: '', source: '' });
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, cardId: null });
 
   useEffect(() => {
     loadDeck();
@@ -57,24 +59,26 @@ const ManageCards = () => {
     }
   };
 
-  const handleDelete = async (cardId) => {
-    if (!window.confirm('Удалить эту карточку?')) return;
+const openDeleteModal = (cardId) => {
+  setDeleteModal({ isOpen: true, cardId });
+};
 
-    try {
-      const response = await fetch(`http://localhost:5000/api/cards/${cardId}`, {
-        method: 'DELETE'
-      });
+const handleDelete = async () => {
+  try {
+    const response = await fetch(`http://localhost:5000/api/cards/${deleteModal.cardId}`, {
+      method: 'DELETE'
+    });
 
-      if (response.ok) {
-        loadDeck();
-      } else {
-        alert('Ошибка при удалении');
-      }
-    } catch (error) {
-      console.error('Error deleting card:', error);
-      alert('Ошибка соединения');
+    if (response.ok) {
+      loadDeck();
+    } else {
+      alert('Ошибка при удалении');
     }
-  };
+  } catch (error) {
+    console.error('Error deleting card:', error);
+    alert('Ошибка соединения');
+  }
+};
 
   const handleAddCard = async (e) => {
     e.preventDefault();
@@ -254,11 +258,20 @@ const ManageCards = () => {
                   </button>
                   <button 
                     className="btn btn-wrong btn-sm"
-                    onClick={() => handleDelete(card.id)}
+                    onClick={() => openDeleteModal(card.id)}
                   >
                     <Trash2 size={16} />
                     <span>Удалить</span>
                   </button>
+                  <Modal
+                    isOpen={deleteModal.isOpen}
+                    onClose={() => setDeleteModal({ isOpen: false, cardId: null })}
+                    onConfirm={handleDelete}
+                    title="Удалить карточку?"
+                    message="Вы уверены, что хотите удалить эту карточку? Это действие нельзя отменить."
+                    confirmText="Удалить"
+                    danger={true}
+                  />
                 </div>
               </>
             )}

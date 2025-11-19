@@ -1,23 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Plus, BookOpen, Target, Zap } from 'lucide-react';
 
 const Home = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
-  const [decks, setDecks] = useState([]);
 
   useEffect(() => {
-    // Загружаем статистику
     fetch('http://localhost:5000/api/stats')
       .then(res => res.json())
       .then(data => setStats(data))
-      .catch(err => console.error(err));
-    
-    // Загружаем колоды
-    fetch('http://localhost:5000/api/decks')
-      .then(res => res.json())
-      .then(data => setDecks(data.decks || []))
       .catch(err => console.error(err));
   }, []);
 
@@ -54,7 +46,7 @@ const Home = () => {
         </div>
       </section>
 
-      {stats && (
+      {/* {stats && (
         <section className="stats-section">
           <h2>Ваш прогресс</h2>
           <div className="stats-grid">
@@ -70,44 +62,12 @@ const Home = () => {
             </div>
             <div className="stat-card">
               <div className="stat-icon">🔥</div>
-              <div className="stat-value">{stats.current_streak}</div>
-              <div className="stat-label">Дней подряд</div>
+              <div className="stat-value">{stats.max_streak}</div>
+              <div className="stat-label">Макс. серия верных</div>
             </div>
           </div>
         </section>
-      )}
-
-      {decks.length > 0 && (
-        <section className="decks-section">
-          <h2>Ваши колоды</h2>
-          <div className="decks-grid">
-            {decks.map((deck) => (
-              <div key={deck.id} className="deck-card">
-                <h3>{deck.title}</h3>
-                <p>{deck.description}</p>
-                <div className="deck-meta">
-                  <span>📝 {deck.card_count} карточек</span>
-                </div>
-                <div className="deck-actions">
-                  <Link 
-                    to={`/manage/${deck.id}`}
-                    className="btn btn-secondary"
-                  >
-                    Управление
-                  </Link>
-                  <Link 
-                    to={`/learn/${deck.id}`}
-                    state={{ cards: [] }}
-                    className="btn btn-primary"
-                  >
-                    Изучать
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      )} */}
 
       <section className="features">
         <h2>Как это работает</h2>
