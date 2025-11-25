@@ -10,10 +10,21 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Связь с колодами
+    # Relationships with CASCADE DELETE
     decks = db.relationship('Deck', backref='user', lazy=True, cascade='all, delete-orphan')
+    stats = db.relationship('UserStats', backref='user', uselist=False, cascade='all, delete-orphan')
+    sessions = db.relationship('StudySession', backref='user', lazy=True, cascade='all, delete-orphan')
+    
+    def set_password(self, password):
+        from werkzeug.security import generate_password_hash
+        self.password_hash = generate_password_hash(password)
+    
+    def check_password(self, password):
+        from werkzeug.security import check_password_hash
+        return check_password_hash(self.password_hash, password)
     
     def to_dict(self):
         return {
@@ -114,38 +125,44 @@ class UserStats(db.Model):
     current_streak = db.Column(db.Integer, default=0)       # Текущая серия
     current_streak_cards = db.Column(db.Text, default='[]') # JSON список карточек в текущей серии
     
-    user = db.relationship('User', backref='stats_record', uselist=False)
+    # Relationship is now defined on User side with cascade
     
     def get_unique_cards_studied(self):
         """Получить список уникальных изученных карточек"""
         try:
-            return json.loads(self.unique_cards_studied)
+            data = json.loads(self.unique_cards_studied)
+            return [int(x) for x in data]
         except:
             return []
     
     def set_unique_cards_studied(self, card_ids):
         """Установить список уникальных изученных карточек"""
-        self.unique_cards_studied = json.dumps(list(set(card_ids)))
+        self.unique_cards_studied = json.dumps(list(set([int(x) for x in card_ids])))
     
     def add_unique_card(self, card_id):
         """Добавить карточку в изученные"""
-        cards = self.get_unique_cards_studied()
-        if card_id not in cards:
-            cards.append(card_id)
-            self.set_unique_cards_studied(cards)
-            return True
-        return False
+        try:
+            card_id = int(card_id)
+            cards = self.get_unique_cards_studied()
+            if card_id not in cards:
+                cards.append(card_id)
+                self.set_unique_cards_studied(cards)
+                return True
+            return False
+        except ValueError:
+            return False
     
     def get_current_streak_cards(self):
         """Получить список карточек в текущей серии"""
         try:
-            return json.loads(self.current_streak_cards)
+            data = json.loads(self.current_streak_cards)
+            return [int(x) for x in data]
         except:
             return []
     
     def set_current_streak_cards(self, card_ids):
         """Установить список карточек в текущей серии"""
-        self.current_streak_cards = json.dumps(card_ids)
+        self.current_streak_cards = json.dumps([int(x) for x in card_ids])
     
     def reset_streak(self):
         """Сбросить текущую серию"""
@@ -154,18 +171,22 @@ class UserStats(db.Model):
     
     def increment_streak(self, card_id):
         """Увеличить серию если карточка уникальная для текущей серии"""
-        streak_cards = self.get_current_streak_cards()
-        if card_id not in streak_cards:
-            streak_cards.append(card_id)
-            self.set_current_streak_cards(streak_cards)
-            self.current_streak = len(streak_cards)
-            
-            # Обновляем максимальную серию если превышена
-            if self.current_streak > self.max_correct_streak:
-                self.max_correct_streak = self.current_streak
-            
-            return True
-        return False
+        try:
+            card_id = int(card_id)
+            streak_cards = self.get_current_streak_cards()
+            if card_id not in streak_cards:
+                streak_cards.append(card_id)
+                self.set_current_streak_cards(streak_cards)
+                self.current_streak = len(streak_cards)
+                
+                # Обновляем максимальную серию если превышена
+                if self.current_streak > self.max_correct_streak:
+                    self.max_correct_streak = self.current_streak
+                
+                return True
+            return False
+        except ValueError:
+            return False
     
     def reset_stats(self):
         """Полный сброс статистики"""

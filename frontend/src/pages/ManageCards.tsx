@@ -3,16 +3,43 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Edit2, Trash2, Plus, Save, X } from 'lucide-react';
 import Modal from '../components/Modal';
 
-const ManageCards = () => {
-  const { deckId } = useParams();
+interface Card {
+  id: string;
+  question: string;
+  answer: string;
+  source: string;
+  times_studied: number;
+  times_correct: number;
+  accuracy: number;
+}
+
+interface Deck {
+  id: string;
+  title: string;
+  cards?: Card[];
+}
+
+interface CardForm {
+  question: string;
+  answer: string;
+  source: string;
+}
+
+interface DeleteModalState {
+  isOpen: boolean;
+  cardId: string | null;
+}
+
+const ManageCards: React.FC = () => {
+  const { deckId } = useParams<{ deckId: string }>();
   const navigate = useNavigate();
-  const [deck, setDeck] = useState(null);
-  const [cards, setCards] = useState([]);
-  const [editingId, setEditingId] = useState(null);
-  const [editForm, setEditForm] = useState({ question: '', answer: '', source: '' });
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newCard, setNewCard] = useState({ question: '', answer: '', source: '' });
-  const [deleteModal, setDeleteModal] = useState({ isOpen: false, cardId: null });
+  const [deck, setDeck] = useState<Deck | null>(null);
+  const [cards, setCards] = useState<Card[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<CardForm>({ question: '', answer: '', source: '' });
+  const [showAddForm, setShowAddForm] = useState<boolean>(false);
+  const [newCard, setNewCard] = useState<CardForm>({ question: '', answer: '', source: '' });
+  const [deleteModal, setDeleteModal] = useState<DeleteModalState>({ isOpen: false, cardId: null });
 
   useEffect(() => {
     loadDeck();
@@ -30,7 +57,7 @@ const ManageCards = () => {
     }
   };
 
-  const handleEdit = (card) => {
+  const handleEdit = (card: Card) => {
     setEditingId(card.id);
     setEditForm({
       question: card.question,
@@ -39,7 +66,7 @@ const ManageCards = () => {
     });
   };
 
-  const handleSave = async (cardId) => {
+  const handleSave = async (cardId: string) => {
     try {
       const response = await fetch(`http://localhost:5000/api/cards/${cardId}`, {
         method: 'PUT',
@@ -59,30 +86,32 @@ const ManageCards = () => {
     }
   };
 
-const openDeleteModal = (cardId) => {
-  setDeleteModal({ isOpen: true, cardId });
-};
+  const openDeleteModal = (cardId: string) => {
+    setDeleteModal({ isOpen: true, cardId });
+  };
 
-const handleDelete = async () => {
-  try {
-    const response = await fetch(`http://localhost:5000/api/cards/${deleteModal.cardId}`, {
-      method: 'DELETE'
-    });
+  const handleDelete = async () => {
+    if (!deleteModal.cardId) return;
 
-    if (response.ok) {
-      loadDeck();
-    } else {
-      alert('Ошибка при удалении');
+    try {
+      const response = await fetch(`http://localhost:5000/api/cards/${deleteModal.cardId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        loadDeck();
+      } else {
+        alert('Ошибка при удалении');
+      }
+    } catch (error) {
+      console.error('Error deleting card:', error);
+      alert('Ошибка соединения');
     }
-  } catch (error) {
-    console.error('Error deleting card:', error);
-    alert('Ошибка соединения');
-  }
-};
+  };
 
-  const handleAddCard = async (e) => {
+  const handleAddCard = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!newCard.question || !newCard.answer) {
       alert('Заполните вопрос и ответ');
       return;
@@ -120,14 +149,14 @@ const handleDelete = async () => {
       </div>
 
       <div className="manage-actions">
-        <button 
+        <button
           className="btn btn-primary"
           onClick={() => setShowAddForm(!showAddForm)}
         >
           <Plus size={20} />
           <span>Добавить карточку</span>
         </button>
-        <button 
+        <button
           className="btn btn-secondary"
           onClick={() => navigate(`/learn/${deckId}`, { state: { cards } })}
         >
@@ -143,7 +172,7 @@ const handleDelete = async () => {
             <textarea
               value={newCard.question}
               onChange={(e) => setNewCard({ ...newCard, question: e.target.value })}
-              rows="3"
+              rows={3}
               required
             />
           </div>
@@ -152,7 +181,7 @@ const handleDelete = async () => {
             <textarea
               value={newCard.answer}
               onChange={(e) => setNewCard({ ...newCard, answer: e.target.value })}
-              rows="3"
+              rows={3}
               required
             />
           </div>
@@ -170,8 +199,8 @@ const handleDelete = async () => {
               <Save size={18} />
               <span>Сохранить</span>
             </button>
-            <button 
-              type="button" 
+            <button
+              type="button"
               className="btn btn-secondary"
               onClick={() => setShowAddForm(false)}
             >
@@ -192,7 +221,7 @@ const handleDelete = async () => {
                   <textarea
                     value={editForm.question}
                     onChange={(e) => setEditForm({ ...editForm, question: e.target.value })}
-                    rows="3"
+                    rows={3}
                   />
                 </div>
                 <div className="form-group">
@@ -200,7 +229,7 @@ const handleDelete = async () => {
                   <textarea
                     value={editForm.answer}
                     onChange={(e) => setEditForm({ ...editForm, answer: e.target.value })}
-                    rows="3"
+                    rows={3}
                   />
                 </div>
                 <div className="form-group">
@@ -212,14 +241,14 @@ const handleDelete = async () => {
                   />
                 </div>
                 <div className="card-actions">
-                  <button 
+                  <button
                     className="btn btn-primary btn-sm"
                     onClick={() => handleSave(card.id)}
                   >
                     <Save size={16} />
                     <span>Сохранить</span>
                   </button>
-                  <button 
+                  <button
                     className="btn btn-secondary btn-sm"
                     onClick={() => setEditingId(null)}
                   >
@@ -249,35 +278,36 @@ const handleDelete = async () => {
                   </div>
                 </div>
                 <div className="card-actions">
-                  <button 
+                  <button
                     className="btn btn-secondary btn-sm"
                     onClick={() => handleEdit(card)}
                   >
                     <Edit2 size={16} />
                     <span>Редактировать</span>
                   </button>
-                  <button 
+                  <button
                     className="btn btn-wrong btn-sm"
                     onClick={() => openDeleteModal(card.id)}
                   >
                     <Trash2 size={16} />
                     <span>Удалить</span>
                   </button>
-                  <Modal
-                    isOpen={deleteModal.isOpen}
-                    onClose={() => setDeleteModal({ isOpen: false, cardId: null })}
-                    onConfirm={handleDelete}
-                    title="Удалить карточку?"
-                    message="Вы уверены, что хотите удалить эту карточку? Это действие нельзя отменить."
-                    confirmText="Удалить"
-                    danger={true}
-                  />
                 </div>
               </>
             )}
           </div>
         ))}
       </div>
+
+      <Modal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false, cardId: null })}
+        onConfirm={handleDelete}
+        title="Удалить карточку?"
+        message="Вы уверены, что хотите удалить эту карточку? Это действие нельзя отменить."
+        confirmText="Удалить"
+        danger={true}
+      />
     </div>
   );
 };

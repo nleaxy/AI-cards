@@ -3,36 +3,56 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import Card from '../components/Card';
 import ProgressBar from '../components/ProgressBar';
 import { Trophy, RotateCcw, Keyboard } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
-const Learn = () => {
+interface CardData {
+  id: string;
+  question: string;
+  answer: string;
+  source?: string;
+}
+
+interface CardResult {
+  card_id: string;
+  correct: boolean;
+  is_streak_card: boolean;
+  reset_streak: boolean;
+}
+
+const Learn: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [cards, setCards] = useState([]);
-  const [deckId, setDeckId] = useState(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [streak, setStreak] = useState(0);
-  const [completed, setCompleted] = useState(false);
-  const [correctCount, setCorrectCount] = useState(0);
-  const [cardResults, setCardResults] = useState([]);
-  const [isFlipped, setIsFlipped] = useState(false);
-  const [showHint, setShowHint] = useState(true);
-  
+  const { token } = useAuth();
+  const [cards, setCards] = useState<CardData[]>([]);
+  const [deckId, setDeckId] = useState<string | null>(null);
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [streak, setStreak] = useState<number>(0);
+  const [completed, setCompleted] = useState<boolean>(false);
+  const [correctCount, setCorrectCount] = useState<number>(0);
+  const [cardResults, setCardResults] = useState<CardResult[]>([]);
+  const [isFlipped, setIsFlipped] = useState<boolean>(false);
+  const [showHint, setShowHint] = useState<boolean>(true);
+
   // Для отслеживания уникальных карточек в текущей сессии
-  const streakCardsRef = useRef(new Set());
+  const streakCardsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const loadDeck = async () => {
       const pathDeckId = window.location.pathname.split('/').pop();
-      
+
       if (location.state?.cards && location.state.cards.length > 0) {
         setCards(location.state.cards);
-        setDeckId(pathDeckId);
+        setDeckId(pathDeckId || null);
       } else {
         try {
-          const response = await fetch(`http://localhost:5000/api/decks/${pathDeckId}`);
+          const headers: HeadersInit = {};
+          if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+          }
+          const response = await fetch(`http://localhost:5000/api/decks/${pathDeckId}`, { headers });
           const data = await response.json();
           setCards(data.cards || []);
-          setDeckId(pathDeckId);
+          setDeckId(pathDeckId || null);
         } catch (error) {
           console.error('Error loading deck:', error);
           navigate('/decks');
@@ -41,13 +61,13 @@ const Learn = () => {
     };
 
     loadDeck();
-  }, [location.state, navigate]);
+  }, [location.state, navigate, token]);
 
   // Горячие клавиши
   useEffect(() => {
-    const handleKeyPress = (e) => {
+    const handleKeyPress = (e: KeyboardEvent) => {
       // Игнорируем если фокус в input/textarea
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+      if (e.target instanceof HTMLElement && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
         return;
       }
 
@@ -86,7 +106,7 @@ const Learn = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  const handleAnswer = (correct) => {
+  const handleAnswer = (correct: boolean) => {
     const currentCard = cards[currentIndex];
     let isStreakCard = false;
     let resetStreak = false;
@@ -107,12 +127,15 @@ const Learn = () => {
     }
 
     // Сохраняем результат
-    setCardResults(prev => [...prev, {
+    const newResult = {
       card_id: currentCard.id,
       correct: correct,
       is_streak_card: isStreakCard,
       reset_streak: resetStreak
-    }]);
+    };
+
+    const updatedResults = [...cardResults, newResult];
+    setCardResults(updatedResults);
 
     // Сбрасываем состояние перелистывания
     setIsFlipped(false);
@@ -121,21 +144,26 @@ const Learn = () => {
       setCurrentIndex(prev => prev + 1);
     } else {
       // Отправляем статистику на сервер
-      saveSession();
+      saveSession(updatedResults, correct ? correctCount + 1 : correctCount);
       setCompleted(true);
     }
   };
 
-  const saveSession = async () => {
+  const saveSession = async (results: CardResult[], finalCorrectCount: number) => {
     try {
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       await fetch('http://localhost:5000/api/sessions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           deck_id: deckId,
           cards_studied: cards.length,
-          cards_correct: correctCount,
-          card_results: cardResults
+          cards_correct: finalCorrectCount,
+          card_results: results
         })
       });
     } catch (error) {
@@ -163,7 +191,7 @@ const Learn = () => {
 
   if (completed) {
     const accuracy = Math.round((correctCount / cards.length) * 100);
-    
+
     return (
       <div className="container page-learn">
         <div className="completion-screen">
@@ -172,7 +200,7 @@ const Learn = () => {
           <p className="completion-message">
             Вы завершили изучение колоды
           </p>
-          
+
           <div className="completion-stats">
             <div className="completion-stat">
               <span className="stat-value">{cards.length}</span>
@@ -209,7 +237,7 @@ const Learn = () => {
         total={cards.length}
         streak={streak}
       />
-      
+
       {showHint && (
         <div className="keyboard-hint">
           <Keyboard size={18} />

@@ -21,3 +21,19 @@ Thumbs.db
 # Logs
 *.log
 backend/instance/study_cards.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+coverage/
+
+# System
+Desktop.ini
+
+# Database (General)
+*.sqlite3

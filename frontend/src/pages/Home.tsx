@@ -2,9 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, BookOpen, Target, Zap } from 'lucide-react';
 
-const Home = () => {
+interface Stats {
+  total_decks: number;
+  cards_studied: number;
+  max_streak: number;
+}
+
+const Home: React.FC = () => {
   const navigate = useNavigate();
-  const [stats, setStats] = useState(null);
+  const [stats, setStats] = useState<Stats | null>(null);
 
   useEffect(() => {
     fetch('http://localhost:5000/api/stats')

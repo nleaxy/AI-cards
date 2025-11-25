@@ -2,9 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { BarChart3, BookOpen, CheckCircle, Flame, RotateCcw } from 'lucide-react';
 import Modal from '../components/Modal';
 
-const Review = () => {
-  const [stats, setStats] = useState(null);
-  const [resetModal, setResetModal] = useState(false);
+interface Stats {
+  total_decks: number;
+  cards_studied: number;
+  max_streak: number;
+}
+
+const Review: React.FC = () => {
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [resetModal, setResetModal] = useState<boolean>(false);
 
   useEffect(() => {
     loadStats();
@@ -95,8 +101,8 @@ const Review = () => {
         <BarChart3 size={32} className="info-icon" />
         <h3>Ваша статистика сохраняется автоматически</h3>
         <p>Все данные привязаны к вашему аккаунту и будут доступны после авторизации</p>
-        
-        <button 
+
+        <button
           className="btn btn-wrong btn-reset-stats"
           onClick={() => setResetModal(true)}
         >

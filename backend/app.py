@@ -1,45 +1,32 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+from flask_sqlalchemy import SQLAlchemy
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from werkzeug.utils import secure_filename
 from flask_swagger_ui import get_swaggerui_blueprint
 import os
-from config import Config
 import PyPDF2
-from ai_service import generate_cards_from_text, get_mock_stats
-from datetime import datetime, date
+from datetime import datetime, timedelta
+from sqlalchemy import func
+from config import Config
 from models import db, User, Deck, Card, StudySession, UserStats
+from ai_service import generate_cards_from_text
 
 app = Flask(__name__)
 app.config.from_object(Config)
 
-# Временная проверка (удалите после отладки)
-print("=== DEBUG INFO ===")
-print(f"API_KEY configured: {bool(Config.API_KEY)}")
-print(f"API_KEY length: {len(Config.API_KEY) if Config.API_KEY else 0}")
-print("==================")
-
-# Инициализация БД
-db.init_app(app)
-
-# Создание таблиц
-with app.app_context():
-    db.create_all()
-    
-    # Создаём тестового пользователя если его нет
-    if not User.query.filter_by(username='test_user').first():
-        test_user = User(username='test_user', email='test@example.com')
-        db.session.add(test_user)
-        db.session.flush()
-        
-        # Создаём запись статистики
-        user_stats = UserStats(user_id=test_user.id)
-        db.session.add(user_stats)
-        
-        db.session.commit()
-        print("Создан тестовый пользователь: test_user")
-
+# Enable CORS
 CORS(app)
 
-# Создаём папку для загрузок
+# Initialize extensions
+db.init_app(app)
+jwt = JWTManager(app)
+
+# Create tables
+with app.app_context():
+    db.create_all()
+
+# Create upload folder
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Swagger UI configuration
@@ -78,49 +65,82 @@ def swagger_spec():
                         }
                     }
                 }
-            },
-            "/api/upload": {
-                "post": {
-                    "summary": "Upload PDF file and generate study cards",
-                    "requestBody": {
-                        "content": {
-                            "multipart/form-data": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "file": {
-                                            "type": "string",
-                                            "format": "binary"
-                                        },
-                                        "mode": {
-                                            "type": "string",
-                                            "enum": ["direct", "summary"]
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "responses": {
-                        "200": {
-                            "description": "File processed successfully"
-                        }
-                    }
-                }
-            },
-            "/api/stats": {
-                "get": {
-                    "summary": "Get user statistics",
-                    "responses": {
-                        "200": {
-                            "description": "Statistics retrieved"
-                        }
-                    }
-                }
             }
         }
     }
     return jsonify(spec)
+
+
+# Auth Endpoints
+@app.route('/api/auth/register', methods=['POST'])
+def register():
+    data = request.json
+    username = data.get('username')
+    email = data.get('email')
+    password = data.get('password')
+    
+    if not username or not email or not password:
+        return jsonify({'error': 'Missing required fields'}), 400
+        
+    if User.query.filter_by(username=username).first():
+        return jsonify({'error': 'Username already exists'}), 400
+        
+    if User.query.filter_by(email=email).first():
+        return jsonify({'error': 'Email already exists'}), 400
+        
+    new_user = User(username=username, email=email)
+    new_user.set_password(password)
+    db.session.add(new_user)
+    db.session.flush()
+    
+    # Create stats record
+    user_stats = UserStats(user_id=new_user.id)
+    db.session.add(user_stats)
+    
+    db.session.commit()
+    
+    access_token = create_access_token(identity=str(new_user.id))
+    return jsonify({
+        'message': 'User registered successfully',
+        'access_token': access_token,
+        'user': new_user.to_dict()
+    }), 201
+
+@app.route('/api/auth/login', methods=['POST'])
+def login():
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    
+    user = User.query.filter_by(username=username).first()
+    
+    if not user or not user.check_password(password):
+        return jsonify({'error': 'Invalid username or password'}), 401
+        
+    access_token = create_access_token(identity=str(user.id))
+    return jsonify({
+        'access_token': access_token,
+        'user': user.to_dict()
+    }), 200
+
+@app.route('/api/auth/user', methods=['DELETE'])
+@jwt_required()
+def delete_user():
+    try:
+        current_user_id = int(get_jwt_identity())
+        user = User.query.get(current_user_id)
+        
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        db.session.delete(user)
+        db.session.commit()
+        
+        return jsonify({'message': 'User deleted successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting user: {str(e)}")
+        return jsonify({'error': f'Failed to delete user: {str(e)}'}), 500
 
 
 # Health check endpoint
@@ -133,13 +153,13 @@ def health_check():
     }), 200
 
 
-# Проверка допустимых файлов
+# File validation
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 
-# Извлечение текста из PDF
+# PDF text extraction
 def extract_text_from_pdf(file_path):
     text = ""
     try:
@@ -154,8 +174,9 @@ def extract_text_from_pdf(file_path):
         raise Exception(f"Ошибка при чтении PDF: {str(e)}")
 
 
-# Обновлённый upload endpoint с сохранением в БД
+# Upload endpoint
 @app.route('/api/upload', methods=['POST'])
+@jwt_required()
 def upload_file():
     if 'file' not in request.files:
         return jsonify({'error': 'Файл не предоставлен'}), 400
@@ -194,20 +215,22 @@ def upload_file():
         if 'error' in result:
             return jsonify(result), 500
         
-        # Сохраняем в БД
-        test_user = User.query.filter_by(username='test_user').first()
+        # Save to DB
+        current_user_id = int(get_jwt_identity())
+        user = User.query.get(current_user_id)
         
-        # Создаём колоду
+        # Create deck
         deck_title = file.filename.rsplit('.', 1)[0]
         deck = Deck(
             title=deck_title,
             description=f"Карточки из файла {file.filename}",
-            user_id=test_user.id
+            user_id=user.id
         )
         db.session.add(deck)
-        db.session.flush()  # Получаем ID колоды
+        db.session.flush()
         
-        # Добавляем карточки
+        # Add cards
+        created_cards = []
         for card_data in result['cards']:
             card = Card(
                 question=card_data['question'],
@@ -216,11 +239,16 @@ def upload_file():
                 deck_id=deck.id
             )
             db.session.add(card)
+            created_cards.append(card)
         
         db.session.commit()
+        
+        # Update IDs in result with real DB IDs
+        for i, card in enumerate(created_cards):
+            result['cards'][i]['id'] = card.id
 
-        # Увеличиваем счетчик созданных колод
-        user_stats = UserStats.query.filter_by(user_id=test_user.id).first()
+        # Increment deck counter
+        user_stats = UserStats.query.filter_by(user_id=user.id).first()
         if user_stats:
             user_stats.total_decks_created += 1
             db.session.commit()
@@ -236,35 +264,53 @@ def upload_file():
         return jsonify({'error': str(e)}), 500
 
 
-# Обновлённый stats endpoint
+# Stats endpoint
 @app.route('/api/stats', methods=['GET'])
+@jwt_required()
 def get_stats():
-    test_user = User.query.filter_by(username='test_user').first()
+    current_user_id = int(get_jwt_identity())
+    user = User.query.get(current_user_id)
     
-    # Получаем статистику пользователя
-    user_stats = UserStats.query.filter_by(user_id=test_user.id).first()
+    # Get user statistics
+    user_stats = UserStats.query.filter_by(user_id=user.id).first()
     
     if not user_stats:
-        # Создаём если не существует
-        user_stats = UserStats(user_id=test_user.id)
+        # Create if doesn't exist
+        user_stats = UserStats(user_id=user.id)
         db.session.add(user_stats)
         db.session.commit()
     
     return jsonify(user_stats.to_dict()), 200
 
 
-# Новый endpoint: получить все колоды
+# Get all decks
 @app.route('/api/decks', methods=['GET'])
+@jwt_required()
 def get_decks():
-    test_user = User.query.filter_by(username='test_user').first()
-    decks = Deck.query.filter_by(user_id=test_user.id).all()
+    current_user_id = int(get_jwt_identity())
+    user = User.query.get(current_user_id)
+    
+    sort_by = request.args.get('sort_by', 'newest')
+    
+    query = Deck.query.filter_by(user_id=user.id)
+    
+    if sort_by == 'newest':
+        query = query.order_by(Deck.created_at.desc())
+    elif sort_by == 'oldest':
+        query = query.order_by(Deck.created_at.asc())
+    elif sort_by == 'name':
+        query = query.order_by(Deck.title.asc())
+    elif sort_by == 'cards':
+        query = query.outerjoin(Card).group_by(Deck.id).order_by(func.count(Card.id).desc())
+        
+    decks = query.all()
     
     return jsonify({
         'decks': [deck.to_dict() for deck in decks]
     }), 200
 
 
-# Новый endpoint: получить колоду с карточками
+# Get deck with cards
 @app.route('/api/decks/<int:deck_id>', methods=['GET'])
 def get_deck(deck_id):
     deck = Deck.query.get_or_404(deck_id)
@@ -272,26 +318,28 @@ def get_deck(deck_id):
 
 
 @app.route('/api/sessions', methods=['POST'])
+@jwt_required()
 def create_session():
     data = request.json
-    test_user = User.query.filter_by(username='test_user').first()
+    current_user_id = int(get_jwt_identity())
+    user = User.query.get(current_user_id)
     
     session = StudySession(
-        user_id=test_user.id,
+        user_id=user.id,
         deck_id=data['deck_id'],
         cards_studied=data['cards_studied'],
         cards_correct=data['cards_correct'],
         duration_seconds=data.get('duration_seconds', 0)
     )
     
-    # Получаем статистику пользователя
-    user_stats = UserStats.query.filter_by(user_id=test_user.id).first()
+    # Get user statistics
+    user_stats = UserStats.query.filter_by(user_id=user.id).first()
     if not user_stats:
-        user_stats = UserStats(user_id=test_user.id)
+        user_stats = UserStats(user_id=user.id)
         db.session.add(user_stats)
         db.session.flush()
     
-    # Обрабатываем результаты по карточкам
+    # Process card results
     for card_result in data.get('card_results', []):
         card = Card.query.get(card_result['card_id'])
         if card:
@@ -301,18 +349,16 @@ def create_session():
             if card_result['correct']:
                 card.times_correct += 1
                 
-                # Добавляем в изученные уникальные карточки
-                is_new = user_stats.add_unique_card(card.id)
+                # Add to unique cards studied
+                user_stats.add_unique_card(card.id)
                 
-                # Обновляем серию только если карточка уникальна для текущей серии
-                if card_result.get('is_streak_card', False):
-                    user_stats.increment_streak(card.id)
+                # Always try to increment streak on correct answer (model handles uniqueness)
+                user_stats.increment_streak(card.id)
             else:
-                # При неправильном ответе сбрасываем серию
-                if card_result.get('reset_streak', False):
-                    user_stats.reset_streak()
+                # Reset streak on wrong answer
+                user_stats.reset_streak()
     
-    # Обновляем время последнего изучения колоды
+    # Update deck's last studied time
     deck = Deck.query.get(data['deck_id'])
     if deck:
         deck.last_studied = datetime.utcnow()
@@ -326,11 +372,13 @@ def create_session():
     }), 201
 
 
-# Новый endpoint: сброс статистики
+# Reset statistics
 @app.route('/api/stats/reset', methods=['POST'])
+@jwt_required()
 def reset_stats():
-    test_user = User.query.filter_by(username='test_user').first()
-    user_stats = UserStats.query.filter_by(user_id=test_user.id).first()
+    current_user_id = int(get_jwt_identity())
+    user = User.query.get(current_user_id)
+    user_stats = UserStats.query.filter_by(user_id=user.id).first()
     
     if user_stats:
         user_stats.reset_stats()
@@ -339,7 +387,7 @@ def reset_stats():
     
     return jsonify({'error': 'Статистика не найдена'}), 404
 
-# Обновить карточку
+# Update card
 @app.route('/api/cards/<int:card_id>', methods=['PUT'])
 def update_card(card_id):
     card = Card.query.get_or_404(card_id)
@@ -356,7 +404,7 @@ def update_card(card_id):
     return jsonify(card.to_dict()), 200
 
 
-# Удалить карточку
+# Delete card
 @app.route('/api/cards/<int:card_id>', methods=['DELETE'])
 def delete_card(card_id):
     card = Card.query.get_or_404(card_id)
@@ -365,7 +413,7 @@ def delete_card(card_id):
     return jsonify({'message': 'Карточка удалена'}), 200
 
 
-# Создать новую карточку
+# Create new card
 @app.route('/api/decks/<int:deck_id>/cards', methods=['POST'])
 def create_card(deck_id):
     deck = Deck.query.get_or_404(deck_id)
@@ -383,7 +431,7 @@ def create_card(deck_id):
     
     return jsonify(card.to_dict()), 201
 
-# Удалить колоду
+# Delete deck
 @app.route('/api/decks/<int:deck_id>', methods=['DELETE'])
 def delete_deck(deck_id):
     deck = Deck.query.get_or_404(deck_id)

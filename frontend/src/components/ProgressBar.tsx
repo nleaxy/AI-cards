@@ -1,7 +1,13 @@
 import React from 'react';
 import { Flame } from 'lucide-react';
 
-const ProgressBar = ({ current, total, streak }) => {
+interface ProgressBarProps {
+  current: number;
+  total: number;
+  streak: number;
+}
+
+const ProgressBar: React.FC<ProgressBarProps> = ({ current, total, streak }) => {
   const progress = (current / total) * 100;
 
   return (

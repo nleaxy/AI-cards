@@ -1,5 +1,6 @@
 import requests
 import json
+import re
 from config import Config
 
 def generate_cards_from_text(text, mode='summary'):
@@ -94,8 +95,17 @@ def generate_cards_from_text(text, mode='summary'):
             cards = json.loads(cards_content)
         except json.JSONDecodeError as e:
             print(f"JSON parse error: {e}")
-            print(f"Content: {cards_content[:500]}")
-            return {"error": f"Не удалось распарсить ответ AI: {str(e)}"}
+            # Попытка исправить распространенные ошибки экранирования (например, в LaTeX)
+            try:
+                # Находим обратные слеши, за которыми НЕ следует валидный управляющий символ
+                # Валидные: " \ / b f n r t u
+                fixed_content = re.sub(r'\\(?![/u"\\bfnrt])', r'\\\\', cards_content)
+                cards = json.loads(fixed_content)
+                print("JSON repaired successfully")
+            except Exception as e2:
+                print(f"Failed to repair JSON: {e2}")
+                print(f"Content: {cards_content[:500]}")
+                return {"error": f"Не удалось распарсить ответ AI: {str(e)}"}
         
         # Добавляем ID к карточкам
         for idx, card in enumerate(cards):

@@ -1,38 +1,97 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Edit, Trash2, Play, ArrowUpDown } from 'lucide-react';
+import { BookOpen, Edit, Trash2, Play, ArrowUpDown, LogIn } from 'lucide-react';
 import Modal from '../components/Modal';
+import { useAuth } from '../context/AuthContext';
 
-const Decks = () => {
-  const [decks, setDecks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [deleteModal, setDeleteModal] = useState({ isOpen: false, deckId: null, deckTitle: '' });
-  const [sortBy, setSortBy] = useState('newest');
+interface Deck {
+  id: string;
+  title: string;
+  description: string;
+  card_count: number;
+  created_at: string;
+  last_studied?: string;
+}
+
+interface DeleteModalState {
+  isOpen: boolean;
+  deckId: string | null;
+  deckTitle: string;
+}
+
+const Decks: React.FC = () => {
+  const [decks, setDecks] = useState<Deck[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [deleteModal, setDeleteModal] = useState<DeleteModalState>({ isOpen: false, deckId: null, deckTitle: '' });
+  const [sortBy, setSortBy] = useState<string>('newest');
+  const [needsAuth, setNeedsAuth] = useState<boolean>(false);
+  const { token, user } = useAuth();
 
   useEffect(() => {
-    loadDecks();
-  }, []);
+    if (user && token) {
+      loadDecks();
+      setNeedsAuth(false);
+    } else {
+      setLoading(false);
+      setNeedsAuth(true);
+      setDecks([]);
+    }
+  }, [sortBy, token, user]);
 
   const loadDecks = async () => {
+    if (decks.length === 0) {
+      setLoading(true);
+    }
     try {
-      const response = await fetch('http://localhost:5000/api/decks');
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`http://localhost:5000/api/decks?sort_by=${sortBy}`, {
+        headers,
+        cache: 'no-cache'
+      });
+
+      if (response.status === 401) {
+        setNeedsAuth(true);
+        setDecks([]);
+        setLoading(false);
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error('Failed to load decks');
+      }
+
       const data = await response.json();
       setDecks(data.decks || []);
+      setNeedsAuth(false);
     } catch (error) {
       console.error('Error loading decks:', error);
+      setDecks([]);
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteDeck = async () => {
+    if (!deleteModal.deckId) return;
+
     try {
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`http://localhost:5000/api/decks/${deleteModal.deckId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers
       });
 
       if (response.ok) {
         loadDecks();
+        setDeleteModal({ isOpen: false, deckId: null, deckTitle: '' });
       } else {
         alert('Ошибка при удалении колоды');
       }
@@ -42,29 +101,12 @@ const Decks = () => {
     }
   };
 
-  const openDeleteModal = (deck) => {
+  const openDeleteModal = (deck: Deck) => {
     setDeleteModal({
       isOpen: true,
       deckId: deck.id,
       deckTitle: deck.title
     });
-  };
-
-  const getSortedDecks = () => {
-    const sorted = [...decks];
-    
-    switch (sortBy) {
-      case 'newest':
-        return sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      case 'oldest':
-        return sorted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-      case 'name':
-        return sorted.sort((a, b) => a.title.localeCompare(b.title));
-      case 'cards':
-        return sorted.sort((a, b) => b.card_count - a.card_count);
-      default:
-        return sorted;
-    }
   };
 
   if (loading) {
@@ -75,7 +117,21 @@ const Decks = () => {
     );
   }
 
-  const sortedDecks = getSortedDecks();
+  if (needsAuth) {
+    return (
+      <div className="container page-decks">
+        <div className="page-header">
+          <h1>Мои колоды</h1>
+          <p>Управляйте своими наборами карточек</p>
+        </div>
+        <div className="empty-state">
+          <LogIn size={64} className="empty-icon" />
+          <h2>Требуется авторизация</h2>
+          <p>Войдите в аккаунт, чтобы просматривать свои колоды</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container page-decks">
@@ -130,15 +186,15 @@ const Decks = () => {
           </div>
 
           <div className="decks-grid">
-            {sortedDecks.map((deck) => (
+            {decks.map((deck) => (
               <div key={deck.id} className="deck-card">
                 <div className="deck-header">
                   <BookOpen size={32} className="deck-icon" />
                   <h3>{deck.title}</h3>
                 </div>
-                
+
                 <p className="deck-description">{deck.description}</p>
-                
+
                 <div className="deck-stats">
                   <span className="deck-stat">
                     <strong>{deck.card_count}</strong> карточек
@@ -151,21 +207,21 @@ const Decks = () => {
                 </div>
 
                 <div className="deck-actions">
-                  <Link 
+                  <Link
                     to={`/learn/${deck.id}`}
                     className="btn btn-primary"
                   >
                     <Play size={18} />
                     <span>Изучать</span>
                   </Link>
-                  <Link 
+                  <Link
                     to={`/manage/${deck.id}`}
                     className="btn btn-secondary"
                   >
                     <Edit size={18} />
                     <span>Управление</span>
                   </Link>
-                  <button 
+                  <button
                     className="btn btn-wrong"
                     onClick={() => openDeleteModal(deck)}
                   >

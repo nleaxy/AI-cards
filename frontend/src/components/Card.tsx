@@ -1,11 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { RotateCcw } from 'lucide-react';
 
-const Card = ({ card, onAnswer, isFlipped, setIsFlipped }) => {
-  const [showAnswer, setShowAnswer] = useState(false);
-  const [cardHeight, setCardHeight] = useState(400);
-  const frontRef = useRef(null);
-  const backRef = useRef(null);
+interface CardData {
+  question: string;
+  answer: string;
+  source?: string;
+}
+
+interface CardProps {
+  card: CardData;
+  onAnswer: (correct: boolean) => void;
+  isFlipped: boolean;
+  setIsFlipped: (isFlipped: boolean) => void;
+}
+
+const Card: React.FC<CardProps> = ({ card, onAnswer, isFlipped, setIsFlipped }) => {
+  const [showAnswer, setShowAnswer] = useState<boolean>(false);
+  const [cardHeight, setCardHeight] = useState<number>(400);
+  const frontRef = useRef<HTMLDivElement>(null);
+  const backRef = useRef<HTMLDivElement>(null);
 
   // Рассчитываем необходимую высоту карточки
   useEffect(() => {
@@ -26,7 +39,7 @@ const Card = ({ card, onAnswer, isFlipped, setIsFlipped }) => {
   useEffect(() => {
     setShowAnswer(false);
     setIsFlipped(false);
-  }, [card]);
+  }, [card, setIsFlipped]);
 
   // Показываем кнопки ответа после переворота
   useEffect(() => {
@@ -43,7 +56,7 @@ const Card = ({ card, onAnswer, isFlipped, setIsFlipped }) => {
     }
   };
 
-  const handleAnswer = (correct) => {
+  const handleAnswer = (correct: boolean) => {
     setShowAnswer(false);
     setIsFlipped(false);
     setTimeout(() => onAnswer(correct), 300);
@@ -51,7 +64,7 @@ const Card = ({ card, onAnswer, isFlipped, setIsFlipped }) => {
 
   return (
     <div className="card-container">
-      <div 
+      <div
         className={`flashcard ${isFlipped ? 'flipped' : ''}`}
         style={{ minHeight: `${cardHeight}px` }}
       >

@@ -1,13 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, ChangeEvent, DragEvent, FormEvent } from 'react';
 import { Upload, FileText, Loader } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
-const FileUpload = ({ onUploadSuccess }) => {
-  const [file, setFile] = useState(null);
-  const [mode, setMode] = useState('summary');
-  const [loading, setLoading] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
+interface FileUploadProps {
+  onUploadSuccess: (data: any) => void;
+}
 
-  const handleDrag = (e) => {
+const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
+  const [file, setFile] = useState<File | null>(null);
+  const [mode, setMode] = useState<string>('summary');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [dragActive, setDragActive] = useState<boolean>(false);
+  const { token } = useAuth();
+
+  const handleDrag = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     if (e.type === "dragenter" || e.type === "dragover") {
@@ -17,11 +23,11 @@ const FileUpload = ({ onUploadSuccess }) => {
     }
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const droppedFile = e.dataTransfer.files[0];
       if (droppedFile.type === 'application/pdf') {
@@ -32,44 +38,53 @@ const FileUpload = ({ onUploadSuccess }) => {
     }
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
     }
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  if (!file) return;
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!file) return;
 
-  setLoading(true);
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('mode', mode);
+    setLoading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('mode', mode);
 
-  try {
-    const response = await fetch('http://localhost:5000/api/upload', {
-      method: 'POST',
-      body: formData,
-    });
+    try {
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
 
-    const data = await response.json();
-    
-    console.log('Response status:', response.status);
-    console.log('Response data:', data);
-    
-    if (data.success) {
-      onUploadSuccess(data);
-    } else {
-      alert(`Ошибка: ${data.error || 'Неизвестная ошибка'}`);
+      const response = await fetch('http://localhost:5000/api/upload', {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
+
+      const data = await response.json().catch(() => ({ error: 'Invalid response from server' }));
+
+      console.log('Response status:', response.status);
+      console.log('Response data:', data);
+
+      if (response.ok && (data.cards || data.summary)) {
+        onUploadSuccess(data);
+      } else if (response.status === 401) {
+        alert('Ошибка: Требуется авторизация. Пожалуйста, войдите в аккаунт.');
+      } else {
+        const errorMessage = data.error || data.message || `Неизвестная ошибка (${response.status})`;
+        alert(`Ошибка: ${errorMessage}`);
+      }
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      alert(`Ошибка соединения: ${error.message}`);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('Upload error:', error);
-    alert(`Ошибка соединения: ${error.message}`);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <div className="upload-container">
@@ -85,7 +100,7 @@ const handleSubmit = async (e) => {
             <span>📚 С кратким обзором</span>
             <small>Сначала покажем основные концепции</small>
           </label>
-          
+
           <label className={`mode-option ${mode === 'direct' ? 'active' : ''}`}>
             <input
               type="radio"
@@ -112,7 +127,7 @@ const handleSubmit = async (e) => {
             onChange={handleFileChange}
             style={{ display: 'none' }}
           />
-          
+
           {!file ? (
             <>
               <Upload size={48} className="upload-icon" />

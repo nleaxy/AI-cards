@@ -1,7 +1,18 @@
 import React from 'react';
 import { BookOpen, ArrowRight } from 'lucide-react';
 
-const Summary = ({ summaryData, onStartLearning }) => {
+interface SummarySection {
+  title: string;
+  content: string;
+  source?: string;
+}
+
+interface SummaryProps {
+  summaryData: SummarySection[];
+  onStartLearning: () => void;
+}
+
+const Summary: React.FC<SummaryProps> = ({ summaryData, onStartLearning }) => {
   return (
     <div className="summary-container">
       <div className="summary-header">

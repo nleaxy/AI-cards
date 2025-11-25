@@ -1,7 +1,27 @@
 import React from 'react';
 import { X, AlertTriangle } from 'lucide-react';
 
-const Modal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Удалить", cancelText = "Отмена", danger = false }) => {
+interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  danger?: boolean;
+}
+
+const Modal: React.FC<ModalProps> = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  message,
+  confirmText = "Удалить",
+  cancelText = "Отмена",
+  danger = false
+}) => {
   if (!isOpen) return null;
 
   return (
@@ -10,21 +30,21 @@ const Modal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Уд
         <button className="modal-close" onClick={onClose}>
           <X size={24} />
         </button>
-        
+
         <div className="modal-header">
           {danger && <AlertTriangle size={48} className="modal-icon-danger" />}
           <h2>{title}</h2>
         </div>
-        
+
         <div className="modal-body">
           <p>{message}</p>
         </div>
-        
+
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>
             {cancelText}
           </button>
-          <button 
+          <button
             className={`btn ${danger ? 'btn-wrong' : 'btn-primary'}`}
             onClick={() => {
               onConfirm();
