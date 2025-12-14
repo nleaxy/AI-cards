@@ -8,3 +8,4 @@ requests==2.31.0
 flask-jwt-extended==4.5.3
 werkzeug==3.0.1
 flasgger==0.9.7.1
+minio==7.2.0

@@ -2240,3 +2240,57 @@ body {
 .btn-blue:hover {
   background: #2563eb;
 }
+
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.pagination-info {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+
+/* Emoji Picker */
+.deck-icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.2s;
+}
+.deck-icon-btn:hover {
+  transform: scale(1.1);
+}
+.deck-emoji {
+  font-size: 2rem;
+  line-height: 1;
+}
+.emoji-picker-modal {
+  max-width: 400px;
+}
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.5rem;
+  padding: 1rem 0;
+}
+.emoji-btn {
+  font-size: 1.5rem;
+  padding: 0.5rem;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.emoji-btn:hover {
+  transform: scale(1.1);
+  background: var(--surface);
+  border-color: var(--primary);
+}

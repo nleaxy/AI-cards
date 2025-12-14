@@ -18,6 +18,13 @@ class Config:
     
     # JWT Configuration
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or os.environ.get('SECRET_KEY') or 'dev-jwt-secret-key-change-in-production'
+
+    # MinIO
+    MINIO_ENDPOINT = os.environ.get('MINIO_ENDPOINT', 'localhost:9000')
+    MINIO_ACCESS_KEY = os.environ.get('MINIO_ACCESS_KEY', 'minioadmin')
+    MINIO_SECRET_KEY = os.environ.get('MINIO_SECRET_KEY', 'minioadmin')
+    MINIO_SECURE = os.environ.get('MINIO_SECURE', 'False').lower() == 'true'
+    MINIO_BUCKET = os.environ.get('MINIO_BUCKET', 'uploads')
     JWT_ACCESS_TOKEN_EXPIRES = False  # Tokens never expire (for development)
     
     OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"

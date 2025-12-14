@@ -37,3 +37,7 @@ Desktop.ini
 
 # Database (General)
 *.sqlite3
+
+# MinIO local setup
+minio/
+minio_data/

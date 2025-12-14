@@ -44,6 +44,7 @@ class Deck(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_studied = db.Column(db.DateTime)
+    emoji = db.Column(db.String(10))
     
     # Связь с карточками
     cards = db.relationship('Card', backref='deck', lazy=True, cascade='all, delete-orphan')
@@ -53,6 +54,7 @@ class Deck(db.Model):
             'id': self.id,
             'title': self.title,
             'description': self.description,
+            'emoji': self.emoji,
             'user_id': self.user_id,
             'created_at': self.created_at.isoformat(),
             'last_studied': self.last_studied.isoformat() if self.last_studied else None,
