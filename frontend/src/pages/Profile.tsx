@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { User, LogOut, Trash2, BarChart2, Calendar, Book, TrendingUp, RotateCcw } from 'lucide-react';
 import ConfirmModal from '../components/ConfirmModal';
+import { apiFetch } from '../api/client';
 
 interface UserStats {
     total_decks: number;
@@ -31,11 +32,7 @@ const Profile: React.FC = () => {
 
     const fetchStats = async () => {
         try {
-            const headers: HeadersInit = {};
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
-            const response = await fetch('http://localhost:5000/api/stats', { headers });
+            const response = await apiFetch('/stats');
 
             if (!response.ok) {
                 throw new Error('Failed to fetch stats');
@@ -63,12 +60,8 @@ const Profile: React.FC = () => {
                 return;
             }
 
-            const response = await fetch('http://localhost:5000/api/auth/user', {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
+            const response = await apiFetch('/auth/user', {
+                method: 'DELETE'
             });
 
             const data = await response.json().catch(() => ({}));
@@ -90,11 +83,8 @@ const Profile: React.FC = () => {
     const handleResetStats = async () => {
         try {
             if (!token) return;
-            const response = await fetch('http://localhost:5000/api/stats/reset', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+            const response = await apiFetch('/stats/reset', {
+                method: 'POST'
             });
 
             if (response.ok) {

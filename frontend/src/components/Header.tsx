@@ -42,14 +42,23 @@ const Header: React.FC = () => {
               <Layers size={20} />
               <span>Колоды</span>
             </Link>
+            {user?.role === 'admin' && (
+              <Link
+                to="/admin"
+                className={`nav-link ${isActive('/admin') ? 'active' : ''}`}
+              >
+                <Layers size={20} />
+                <span>Admin</span>
+              </Link>
+            )}
           </nav>
 
           <div className="auth-controls">
             {user ? (
-                <Link
-                  to="/profile"
-                  className={`user-menu-btn ${isActive('/profile') ? 'active' : ''}`}
-                >
+              <Link
+                to="/profile"
+                className={`user-menu-btn ${isActive('/profile') ? 'active' : ''}`}
+              >
                 <UserIcon size={20} />
                 <span>{user.username}</span>
               </Link>
@@ -65,7 +74,7 @@ const Header: React.FC = () => {
             )}
           </div>
         </div>
-      </header>
+      </header >
 
       <AuthModal
         isOpen={isAuthModalOpen}

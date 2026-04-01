@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { BookOpen, Edit, Trash2, Play, ArrowUpDown, LogIn, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import Modal from '../components/Modal';
 import { useAuth } from '../context/AuthContext';
+import { apiFetch } from '../api/client';
 
 interface Deck {
   id: string;
@@ -51,13 +52,7 @@ const Decks: React.FC = () => {
       setLoading(true);
     }
     try {
-      const headers: HeadersInit = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(`http://localhost:5000/api/decks?sort_by=${sortBy}&page=${currentPage}&per_page=10`, {
-        headers,
+      const response = await apiFetch(`/decks?sort_by=${sortBy}&page=${currentPage}&per_page=10`, {
         cache: 'no-cache'
       });
 
@@ -86,14 +81,7 @@ const Decks: React.FC = () => {
 
   const handleExportDeck = async (deck: Deck) => {
     try {
-      const headers: HeadersInit = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(`http://localhost:5000/api/decks/${deck.id}/export`, {
-        headers
-      });
+      const response = await apiFetch(`/decks/${deck.id}/export`);
 
       if (!response.ok) throw new Error('Export failed');
 
@@ -116,14 +104,8 @@ const Decks: React.FC = () => {
     if (!deleteModal.deckId) return;
 
     try {
-      const headers: HeadersInit = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(`http://localhost:5000/api/decks/${deleteModal.deckId}`, {
-        method: 'DELETE',
-        headers
+      const response = await apiFetch(`/decks/${deleteModal.deckId}`, {
+        method: 'DELETE'
       });
 
       if (response.ok) {
@@ -150,16 +132,8 @@ const Decks: React.FC = () => {
     if (!emojiPicker.deckId) return;
 
     try {
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json'
-      };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(`http://localhost:5000/api/decks/${emojiPicker.deckId}`, {
+      const response = await apiFetch(`/decks/${emojiPicker.deckId}`, {
         method: 'PUT',
-        headers,
         body: JSON.stringify({ emoji })
       });
 

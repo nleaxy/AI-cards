@@ -1,15 +1,16 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-interface User {
+export interface User {
     id: number;
     username: string;
     email: string;
+    role: 'user' | 'admin';
 }
 
 interface AuthContextType {
     user: User | null;
     token: string | null;
-    login: (token: string, user: User) => void;
+    login: (token: string, user: User) => void;  // refresh token больше не передаем - он в cookie
     logout: () => void;
     isAuthenticated: boolean;
 }
@@ -21,6 +22,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [token, setToken] = useState<string | null>(null);
 
     useEffect(() => {
+        // при загрузке страницы восстанавливаем access token и данные пользователя из localStorage
+        // refresh token не нужно восстанавливать - он в httponly cookie, браузер сам его хранит
         const storedToken = localStorage.getItem('token');
         const storedUser = localStorage.getItem('user');
 
@@ -31,17 +34,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     const login = (newToken: string, newUser: User) => {
+        // сохраняем только access token и данные пользователя - refresh token в httponly cookie
+        // удаляем старый refreshToken из localStorage если он там остался с прошлой версии
         setToken(newToken);
         setUser(newUser);
         localStorage.setItem('token', newToken);
         localStorage.setItem('user', JSON.stringify(newUser));
+        localStorage.removeItem('refreshToken');  // чистим старое значение
     };
 
     const logout = () => {
+        // очищаем access token и user из localStorage
+        // refresh token удаляется сервером при вызове /logout (он устанавливает пустой cookie)
         setToken(null);
         setUser(null);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        localStorage.removeItem('refreshToken');  // чистим старое значение если осталось
     };
 
     return (

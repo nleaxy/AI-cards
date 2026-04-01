@@ -1,6 +1,6 @@
 import React, { useState, ChangeEvent, DragEvent, FormEvent } from 'react';
 import { Upload, FileText, Loader } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { apiFetch } from '../api/client';
 
 interface FileUploadProps {
   onUploadSuccess: (data: any) => void;
@@ -11,7 +11,6 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
   const [mode, setMode] = useState<string>('summary');
   const [loading, setLoading] = useState<boolean>(false);
   const [dragActive, setDragActive] = useState<boolean>(false);
-  const { token } = useAuth();
 
   const handleDrag = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -54,26 +53,15 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
     formData.append('mode', mode);
 
     try {
-      const headers: HeadersInit = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await fetch('http://localhost:5000/api/upload', {
+      const response = await apiFetch('/upload', {
         method: 'POST',
-        headers,
         body: formData,
       });
 
       const data = await response.json().catch(() => ({ error: 'Invalid response from server' }));
 
-      console.log('Response status:', response.status);
-      console.log('Response data:', data);
-
       if (response.ok && (data.cards || data.summary)) {
         onUploadSuccess(data);
-      } else if (response.status === 401) {
-        alert('Ошибка: Требуется авторизация. Пожалуйста, войдите в аккаунт.');
       } else {
         const errorMessage = data.error || data.message || `Неизвестная ошибка (${response.status})`;
         alert(`Ошибка: ${errorMessage}`);

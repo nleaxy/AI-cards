@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Edit2, Trash2, Plus, Save, X } from 'lucide-react';
 import Modal from '../components/Modal';
+import { apiFetch } from '../api/client';
 
 interface Card {
   id: string;
@@ -47,7 +48,8 @@ const ManageCards: React.FC = () => {
 
   const loadDeck = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/decks/${deckId}`);
+      const response = await apiFetch(`/decks/${deckId}`);
+      if (!response.ok) throw new Error('Failed to load deck');
       const data = await response.json();
       setDeck(data);
       setCards(data.cards || []);
@@ -68,9 +70,8 @@ const ManageCards: React.FC = () => {
 
   const handleSave = async (cardId: string) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/cards/${cardId}`, {
+      const response = await apiFetch(`/cards/${cardId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm)
       });
 
@@ -94,12 +95,13 @@ const ManageCards: React.FC = () => {
     if (!deleteModal.cardId) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/cards/${deleteModal.cardId}`, {
+      const response = await apiFetch(`/cards/${deleteModal.cardId}`, {
         method: 'DELETE'
       });
 
       if (response.ok) {
         loadDeck();
+        setDeleteModal({ isOpen: false, cardId: null });
       } else {
         alert('Ошибка при удалении');
       }
@@ -118,9 +120,8 @@ const ManageCards: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/decks/${deckId}/cards`, {
+      const response = await apiFetch(`/decks/${deckId}/cards`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newCard)
       });
 

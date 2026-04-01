@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, BookOpen, Target, Zap } from 'lucide-react';
+import { apiFetch } from '../api/client';
 
 interface Stats {
   total_decks: number;
@@ -13,8 +14,14 @@ const Home: React.FC = () => {
   const [stats, setStats] = useState<Stats | null>(null);
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/stats')
-      .then(res => res.json())
+    // Optional: Only fetch stats if logged in? Or backend handles public access?
+    // Assuming stats endpoint might require auth or return nothing if not auth.
+    // For now, let's try to fetch it.
+    apiFetch('/stats')
+      .then(res => {
+        if (res.ok) return res.json();
+        return null;
+      })
       .then(data => setStats(data))
       .catch(err => console.error(err));
   }, []);

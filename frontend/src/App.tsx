@@ -8,6 +8,8 @@ import Learn from './pages/Learn';
 import Review from './pages/Review';
 import ManageCards from './pages/ManageCards';
 import Profile from './pages/Profile';
+import AdminPanel from './pages/AdminPanel';
+import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
 
 const App: React.FC = () => {
@@ -25,6 +27,11 @@ const App: React.FC = () => {
               <Route path="/manage/:deckId" element={<ManageCards />} />
               <Route path="/review" element={<Review />} />
               <Route path="/profile" element={<Profile />} />
+
+              {/* Admin Routes */}
+              <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                <Route path="/admin" element={<AdminPanel />} />
+              </Route>
             </Routes>
           </main>
         </div>

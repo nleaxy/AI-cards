@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BarChart3, BookOpen, CheckCircle, Flame, RotateCcw } from 'lucide-react';
 import Modal from '../components/Modal';
+import { apiFetch } from '../api/client';
 
 interface Stats {
   total_decks: number;
@@ -17,7 +18,7 @@ const Review: React.FC = () => {
   }, []);
 
   const loadStats = () => {
-    fetch('http://localhost:5000/api/stats')
+    apiFetch('/stats')
       .then(res => res.json())
       .then(data => setStats(data))
       .catch(err => console.error(err));
@@ -25,9 +26,8 @@ const Review: React.FC = () => {
 
   const handleResetStats = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/stats/reset', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+      const response = await apiFetch('/stats/reset', {
+        method: 'POST'
       });
 
       if (response.ok) {

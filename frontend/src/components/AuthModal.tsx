@@ -31,6 +31,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
+                credentials: 'include'  // нужно чтобы браузер получил httponly cookie с refresh token
             });
 
             const data = await response.json();
@@ -39,7 +40,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 throw new Error(data.error || 'Authentication failed');
             }
 
-            login(data.access_token, data.user);
+            login(data.access_token, data.user);  // refresh token теперь в httponly cookie, не нужно передавать
             onClose();
         } catch (err: any) {
             setError(err.message);

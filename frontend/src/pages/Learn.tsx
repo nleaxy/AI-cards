@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import Card from '../components/Card';
+import CardItem from '../components/Card';
 import ProgressBar from '../components/ProgressBar';
 import { Trophy, RotateCcw, Keyboard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { apiFetch } from '../api/client';
 
 interface CardData {
   id: string;
@@ -45,11 +46,7 @@ const Learn: React.FC = () => {
         setDeckId(pathDeckId || null);
       } else {
         try {
-          const headers: HeadersInit = {};
-          if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
-          }
-          const response = await fetch(`http://localhost:5000/api/decks/${pathDeckId}`, { headers });
+          const response = await apiFetch(`/decks/${pathDeckId}`);
           const data = await response.json();
           setCards(data.cards || []);
           setDeckId(pathDeckId || null);
@@ -151,14 +148,8 @@ const Learn: React.FC = () => {
 
   const saveSession = async (results: CardResult[], finalCorrectCount: number) => {
     try {
-      const headers: HeadersInit = { 'Content-Type': 'application/json' };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      await fetch('http://localhost:5000/api/sessions', {
+      await apiFetch('/sessions', {
         method: 'POST',
-        headers,
         body: JSON.stringify({
           deck_id: deckId,
           cards_studied: cards.length,
@@ -258,7 +249,7 @@ const Learn: React.FC = () => {
         </div>
       )}
 
-      <Card
+      <CardItem
         card={cards[currentIndex]}
         onAnswer={handleAnswer}
         isFlipped={isFlipped}

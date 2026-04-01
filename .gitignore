@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *.env
+.env
 instance/study_cards.db
 venv/
 uploads/
