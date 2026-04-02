@@ -57,18 +57,40 @@ with app.app_context():
     except Exception as e:
         print(f"Error checking refresh_tokens table: {e}")
 
+    try:
+        from sqlalchemy import text
+        with db.engine.connect() as conn:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS deck_files (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    deck_id INTEGER NOT NULL,
+                    object_name VARCHAR(500) NOT NULL,
+                    original_name VARCHAR(500) NOT NULL,
+                    size_bytes INTEGER NOT NULL,
+                    mime_type VARCHAR(100),
+                    uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY(deck_id) REFERENCES decks(id)
+                )
+            """))
+            conn.commit()
+            print("Ensured deck_files table exists")
+    except Exception as e:
+        print(f"Error checking deck_files table: {e}")
+
 # Register Blueprints (API layer)
 from api.auth_routes import auth_bp
 from api.admin_routes import admin_bp
 from api.deck_routes import deck_bp
 from api.stats_routes import stats_bp
 from api.main_routes import main_bp
+from api.file_routes import file_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(deck_bp)
 app.register_blueprint(stats_bp)
 app.register_blueprint(main_bp)
+app.register_blueprint(file_bp)
 
 
 # Swagger JSON spec endpoint

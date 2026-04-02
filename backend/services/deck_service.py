@@ -1,7 +1,7 @@
 # сервис для работы с колодами и карточками
 # тут самая сложная логика: загрузка pdf, работа с minio (хранилище файлов) и вызов ai
 
-from models import db, Deck, Card, UserStats
+from models import db, Deck, Card, UserStats, DeckFile
 import io
 import time
 from minio import Minio
@@ -125,9 +125,15 @@ class DeckService:
         result['deck_id'] = deck.id
         return result, 200
 
-    def get_user_decks(self, user_id, sort_by, page, per_page):
-        # возвращаем постраничный список колод пользователя
-        return self.deck_repo.get_user_decks(user_id, sort_by, page, per_page)
+    def get_user_decks(self, user_id, sort_by, page, per_page,
+                       search=None, min_cards=None, max_cards=None,
+                       date_from=None, date_to=None):
+        # возвращаем постраничный список колод пользователя с фильтрацией
+        return self.deck_repo.get_user_decks(
+            user_id, sort_by, page, per_page,
+            search=search, min_cards=min_cards, max_cards=max_cards,
+            date_from=date_from, date_to=date_to
+        )
 
     def get_deck(self, deck_id):
         # возвращаем одну колоду по id
@@ -201,3 +207,102 @@ class DeckService:
         self.card_repo.add(card)
         db.session.commit()
         return card.to_dict(), 201
+
+    def upload_deck_file(self, deck_id, current_user_id, file, filename):
+        # проверяем доступ
+        deck = self.deck_repo.get_by_id(deck_id)
+        if not deck:
+            return {'error': 'Колода не найдена'}, 404
+        if deck.user_id != current_user_id:
+            return {'error': 'Нет прав'}, 403
+
+        # ограничения файлов
+        file_content = file.read()
+        file_size = len(file_content)
+        if file_size > 10 * 1024 * 1024:
+            return {'error': 'Файл слишком большой (макс 10 MB)'}, 400
+
+        allowed_ext = {'pdf', 'png', 'jpg', 'jpeg', 'docx'}
+        ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+        if ext not in allowed_ext:
+            return {'error': 'Недопустимый тип файла'}, 400
+
+        # загружаем в MinIO
+        timestamp = int(time.time())
+        object_name = f"deck_{deck_id}_{timestamp}_{filename}"
+        bucket_name = Config.MINIO_BUCKET
+
+        try:
+            if not minio_client.bucket_exists(bucket_name):
+                minio_client.make_bucket(bucket_name)
+            minio_client.put_object(
+                bucket_name,
+                object_name,
+                io.BytesIO(file_content),
+                length=file_size,
+                content_type=file.content_type
+            )
+        except Exception as e:
+            return {'error': f'Ошибка загрузки в хранилище: {str(e)}'}, 500
+
+        # сохраняем в БД
+        deck_file = DeckFile(
+            deck_id=deck_id,
+            object_name=object_name,
+            original_name=filename,
+            size_bytes=file_size,
+            mime_type=file.content_type
+        )
+        db.session.add(deck_file)
+        db.session.commit()
+
+        return deck_file.to_dict(), 201
+
+    def get_deck_files(self, deck_id, current_user_id):
+        deck = self.deck_repo.get_by_id(deck_id)
+        if not deck:
+            return {'error': 'Колода не найдена'}, 404
+        if deck.user_id != current_user_id:
+            return {'error': 'Нет прав'}, 403
+
+        files = DeckFile.query.filter_by(deck_id=deck_id).all()
+        return [f.to_dict() for f in files], 200
+
+    def get_file_url(self, file_id, current_user_id):
+        deck_file = DeckFile.query.get(file_id)
+        if not deck_file:
+            return {'error': 'Файл не найден'}, 404
+
+        deck = self.deck_repo.get_by_id(deck_file.deck_id)
+        if deck.user_id != current_user_id:
+            return {'error': 'Нет прав'}, 403
+
+        try:
+            url = minio_client.presigned_get_object(
+                Config.MINIO_BUCKET,
+                deck_file.object_name,
+                # Ссылка действует 1 час
+            )
+            return {'url': url, 'original_name': deck_file.original_name}, 200
+        except Exception as e:
+            return {'error': f'Ошибка генерации ссылки: {str(e)}'}, 500
+
+    def delete_deck_file(self, file_id, current_user_id):
+        deck_file = DeckFile.query.get(file_id)
+        if not deck_file:
+            return {'error': 'Файл не найден'}, 404
+
+        deck = self.deck_repo.get_by_id(deck_file.deck_id)
+        if deck.user_id != current_user_id:
+            return {'error': 'Нет прав'}, 403
+
+        # Удаляем из MinIO
+        try:
+            minio_client.remove_object(Config.MINIO_BUCKET, deck_file.object_name)
+        except Exception as e:
+            print(f"Ошибка удаления из MinIO: {e}")
+
+        # Удаляем из БД
+        db.session.delete(deck_file)
+        db.session.commit()
+        return {'message': 'Файл удалён'}, 200

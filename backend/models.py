@@ -61,6 +61,8 @@ class Deck(db.Model):
     
     # Связь с карточками
     cards = db.relationship('Card', backref='deck', lazy=True, cascade='all, delete-orphan')
+    # Связь с прикреплёнными файлами
+    files = db.relationship('DeckFile', backref='deck', lazy=True, cascade='all, delete-orphan')
     
     def to_dict(self, include_cards=False):
         result = {
@@ -103,6 +105,28 @@ class Card(db.Model):
             'times_studied': self.times_studied,
             'times_correct': self.times_correct,
             'accuracy': (self.times_correct / self.times_studied * 100) if self.times_studied > 0 else 0
+        }
+
+
+class DeckFile(db.Model):
+    __tablename__ = 'deck_files'
+
+    id = db.Column(db.Integer, primary_key=True)
+    deck_id = db.Column(db.Integer, db.ForeignKey('decks.id'), nullable=False)
+    object_name = db.Column(db.String(500), nullable=False)  # ключ в MinIO
+    original_name = db.Column(db.String(500), nullable=False)  # оригинальное имя файла
+    size_bytes = db.Column(db.Integer, nullable=False)
+    mime_type = db.Column(db.String(100))
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'deck_id': self.deck_id,
+            'original_name': self.original_name,
+            'size_bytes': self.size_bytes,
+            'mime_type': self.mime_type,
+            'uploaded_at': self.uploaded_at.isoformat()
         }
 
 

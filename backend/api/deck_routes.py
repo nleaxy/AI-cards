@@ -30,13 +30,39 @@ def upload_file():
 @deck_bp.route('/decks', methods=['GET'])
 @jwt_required()  # только авторизованный видит свои колоды
 def get_decks():
-    # возвращаем список колод текущего пользователя с поддержкой сортировки и постраничности
+    # возвращаем список колод текущего пользователя с поддержкой фильтрации, сортировки и постраничности
     user_id = int(get_jwt_identity())
     sort_by = request.args.get('sort_by', 'newest')  # параметр сортировки из url
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 9, type=int)
 
-    pagination = container.deck_service.get_user_decks(user_id, sort_by, page, per_page)
+    # параметры фильтрации
+    search = request.args.get('search', '').strip() or None
+    date_from = request.args.get('date_from', '').strip() or None
+    date_to = request.args.get('date_to', '').strip() or None
+
+    # валидация числовых параметров
+    min_cards = request.args.get('min_cards', type=int)
+    max_cards = request.args.get('max_cards', type=int)
+
+    if sort_by not in ('newest', 'oldest', 'name', 'cards'):
+        return jsonify({'error': 'Недопустимое значение sort_by'}), 400
+    if page < 1:
+        return jsonify({'error': 'page должен быть >= 1'}), 400
+    if per_page < 1 or per_page > 50:
+        return jsonify({'error': 'per_page должен быть от 1 до 50'}), 400
+    if min_cards is not None and min_cards < 0:
+        return jsonify({'error': 'min_cards не может быть отрицательным'}), 400
+    if max_cards is not None and max_cards < 0:
+        return jsonify({'error': 'max_cards не может быть отрицательным'}), 400
+    if min_cards is not None and max_cards is not None and min_cards > max_cards:
+        return jsonify({'error': 'min_cards не может быть больше max_cards'}), 400
+
+    pagination = container.deck_service.get_user_decks(
+        user_id, sort_by, page, per_page,
+        search=search, min_cards=min_cards, max_cards=max_cards,
+        date_from=date_from, date_to=date_to
+    )
     decks = pagination.items
     return jsonify({
         'decks': [deck.to_dict() for deck in decks],

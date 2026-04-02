@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Edit2, Trash2, Plus, Save, X } from 'lucide-react';
 import Modal from '../components/Modal';
+import DeckFilesPanel from '../components/DeckFilesPanel';
 import { apiFetch } from '../api/client';
 
 interface Card {
@@ -149,7 +150,9 @@ const ManageCards: React.FC = () => {
         <p>{deck.title}</p>
       </div>
 
-      <div className="manage-actions">
+      <DeckFilesPanel deckId={deckId!} />
+
+      <div className="manage-actions" style={{ marginTop: '20px' }}>
         <button
           className="btn btn-primary"
           onClick={() => setShowAddForm(!showAddForm)}
