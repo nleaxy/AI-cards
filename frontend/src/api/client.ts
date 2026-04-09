@@ -35,9 +35,9 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
         credentials: 'include'
     });
 
-    // если пришел 401 - access token истёк, пробуем обновить через refresh token из cookie
-    // но только если в localStorage вообще есть token - иначе пользователь просто не залогинен
-    if (response.status === 401 && localStorage.getItem('token')) {
+    // если пришел 401 или 422 - access token истёк или невалиден, пробуем обновить через refresh token из cookie
+    // 422 может прийти от Flask-JWT-Extended если изменился секретный ключ или структура токена
+    if ((response.status === 401 || response.status === 422) && localStorage.getItem('token')) {
         try {
             // браузер автоматически отправит refresh_token cookie - нам не нужно его передавать вручную
             const refreshResponse = await fetch(`${API_URL}/auth/refresh`, {

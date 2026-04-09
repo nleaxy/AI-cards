@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { BarChart3, BookOpen, CheckCircle, Flame, RotateCcw } from 'lucide-react';
 import Modal from '../components/Modal';
 import { apiFetch } from '../api/client';
+import SEO from '../components/SEO';
 
 interface Stats {
   total_decks: number;
@@ -51,6 +52,11 @@ const Review: React.FC = () => {
 
   return (
     <div className="container page-review">
+      <SEO
+        title="Статистика"
+        description="Ваш прогресс обучения в AI Cards."
+        noIndex={true}
+      />
       <div className="page-header">
         <h1>Ваша статистика</h1>
         <p>Отслеживайте свой прогресс в обучении</p>

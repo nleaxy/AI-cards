@@ -4,17 +4,25 @@
 from models import db, Deck, Card, UserStats, DeckFile
 import io
 import time
+import urllib3
 from minio import Minio
 from config import Config
 from ai_service import generate_cards_from_text  # функция для генерации карточек через ai
 import PyPDF2
+
+# настраиваем короткий таймаут для MinIO (если он отключен, бэк не будет висеть бесконечно)
+http_client = urllib3.PoolManager(
+    timeout=urllib3.Timeout(connect=2.0, read=2.0),
+    retries=urllib3.Retry(total=0)
+)
 
 # создаем клиент для minio - это наше хранилище файлов (как s3 бакет)
 minio_client = Minio(
     Config.MINIO_ENDPOINT,
     access_key=Config.MINIO_ACCESS_KEY,
     secret_key=Config.MINIO_SECRET_KEY,
-    secure=Config.MINIO_SECURE
+    secure=Config.MINIO_SECURE,
+    http_client=http_client
 )
 
 

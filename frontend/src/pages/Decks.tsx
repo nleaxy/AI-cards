@@ -4,6 +4,7 @@ import { BookOpen, Edit, Trash2, Play, ArrowUpDown, LogIn, Download, ChevronLeft
 import Modal from '../components/Modal';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../api/client';
+import SEO from '../components/SEO';
 
 interface Deck {
   id: string;
@@ -232,6 +233,12 @@ const Decks: React.FC = () => {
 
   return (
     <div className="container page-decks">
+      <SEO
+        title="Мои колоды"
+        description="Управляйте своими учебными колодами: создавайте, изучайте, отслеживайте прогресс."
+        canonical="/decks"
+        noIndex={true}
+      />
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1>Мои колоды</h1>

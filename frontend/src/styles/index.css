@@ -2294,3 +2294,77 @@ body {
   background: var(--surface);
   border-color: var(--primary);
 }
+
+/* SEO Performance & CLS Prevention */
+
+/* Предотвращение CLS (Cumulative Layout Shift) - 4.4
+   Зоны с динамическим контентом получают min-height
+   чтобы страница не прыгала во время загрузки */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+}
+
+/* Lazy loading для изображений - 4.1
+   preserves aspect-ratio space before image loads */
+img[loading="lazy"] {
+  aspect-ratio: attr(width) / attr(height);
+  width: 100%;
+  height: auto;
+}
+
+/* Фикс CLS: hero секция имеет фиксированную минимальную высоту */
+.hero {
+  min-height: 380px;
+}
+
+/* Фикс CLS: features grid не прыгает при загрузке */
+.features-grid {
+  min-height: 160px;
+}
+
+/* Фикс CLS: область карточки имеет фиксированную высоту */
+.card-container {
+  min-height: 400px;
+}
+
+/* Фикс CLS: deck grid */
+.decks-grid {
+  min-height: 200px;
+}
+
+/* Кнопки которых не хватает (использовались в Profile.tsx) */
+.btn-warning {
+  background: var(--warning);
+  color: white;
+}
+
+.btn-warning:hover:not(:disabled) {
+  background: #d97706;
+  transform: translateY(-1px);
+}
+
+.btn-blue {
+  background: #3b82f6;
+  color: white;
+}
+
+.btn-blue:hover:not(:disabled) {
+  background: #2563eb;
+  transform: translateY(-1px);
+}
+
+/* Улучшение отображения ошибок загрузки (graceful degradation) */
+.upload-error-block {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+

@@ -4,11 +4,34 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#6366f1" />
-    <meta name="description" content="Создавайте учебные карточки из PDF автоматически" />
-    <title>Study Cards - Учись эффективно</title>
+
+    <!-- Базовое SEO (перекрывается react-helmet-async на каждой странице) -->
+    <meta name="description" content="Загрузите PDF-конспект и получите готовые учебные карточки, созданные искусственным интеллектом. Эффективное обучение с интервальным повторением." />
+    <meta name="robots" content="index, follow" />
+    <meta name="author" content="AI Cards" />
+    <title>AI Cards — умные учебные карточки из PDF</title>
+
+    <!-- Open Graph базовые (перекрываются через helmet) -->
+    <meta property="og:site_name" content="AI Cards" />
+    <meta property="og:locale" content="ru_RU" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="AI Cards — умные учебные карточки из PDF" />
+    <meta property="og:description" content="Загрузите PDF-конспект и получите готовые учебные карточки, созданные ИИ." />
+
+    <!-- Twitter Card базовые -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="AI Cards — умные учебные карточки из PDF" />
+    <meta name="twitter:description" content="Загрузите PDF-конспект и получите готовые учебные карточки, созданные ИИ." />
+
+    <!-- Canonical (будет перекрыт через helmet для конкретных страниц) -->
+    <link rel="canonical" href="http://localhost:3000/" />
+
+    <!-- Производительность: preconnect к CDN шрифтов -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
   </head>
   <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <noscript>Для работы приложения необходимо включить JavaScript в браузере.</noscript>
     <div id="root"></div>
   </body>
 </html>

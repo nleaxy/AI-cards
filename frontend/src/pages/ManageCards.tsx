@@ -4,6 +4,7 @@ import { Edit2, Trash2, Plus, Save, X } from 'lucide-react';
 import Modal from '../components/Modal';
 import DeckFilesPanel from '../components/DeckFilesPanel';
 import { apiFetch } from '../api/client';
+import SEO from '../components/SEO';
 
 interface Card {
   id: string;
@@ -145,6 +146,10 @@ const ManageCards: React.FC = () => {
 
   return (
     <div className="container page-manage">
+      <SEO
+        title={`Управление: ${deck?.title || 'Колода'}`}
+        noIndex={true}
+      />
       <div className="page-header">
         <h1>Управление карточками</h1>
         <p>{deck.title}</p>

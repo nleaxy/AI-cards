@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FileUpload from '../components/FileUpload';
 import Summary from '../components/Summary';
+import SEO from '../components/SEO';
 
 interface Card {
   question: string;
@@ -44,6 +45,12 @@ const Upload: React.FC = () => {
 
   return (
     <div className="container page-upload">
+      <SEO
+        title="Загрузить PDF"
+        description="Загрузите PDF-конспект для автоматического создания учебных карточек с помощью ИИ."
+        canonical="/upload"
+        noIndex={true}
+      />
       {!showSummary ? (
         <>
           <div className="page-header">

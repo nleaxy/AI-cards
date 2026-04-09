@@ -1,5 +1,5 @@
 import React, { useState, ChangeEvent, DragEvent, FormEvent } from 'react';
-import { Upload, FileText, Loader } from 'lucide-react';
+import { Upload, FileText, Loader, AlertCircle } from 'lucide-react';
 import { apiFetch } from '../api/client';
 
 interface FileUploadProps {
@@ -11,13 +11,16 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
   const [mode, setMode] = useState<string>('summary');
   const [loading, setLoading] = useState<boolean>(false);
   const [dragActive, setDragActive] = useState<boolean>(false);
+  // Состояние ошибки вместо alert() — graceful degradation
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [emptyResult, setEmptyResult] = useState<boolean>(false);
 
   const handleDrag = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
+    if (e.type === 'dragenter' || e.type === 'dragover') {
       setDragActive(true);
-    } else if (e.type === "dragleave") {
+    } else if (e.type === 'dragleave') {
       setDragActive(false);
     }
   };
@@ -26,18 +29,22 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
+    setUploadError(null);
+    setEmptyResult(false);
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const droppedFile = e.dataTransfer.files[0];
       if (droppedFile.type === 'application/pdf') {
         setFile(droppedFile);
       } else {
-        alert('Пожалуйста, загрузите PDF файл');
+        setUploadError('Пожалуйста, загрузите файл в формате PDF');
       }
     }
   };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setUploadError(null);
+    setEmptyResult(false);
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
     }
@@ -48,6 +55,9 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
     if (!file) return;
 
     setLoading(true);
+    setUploadError(null);
+    setEmptyResult(false);
+
     const formData = new FormData();
     formData.append('file', file);
     formData.append('mode', mode);
@@ -58,17 +68,32 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
         body: formData,
       });
 
-      const data = await response.json().catch(() => ({ error: 'Invalid response from server' }));
+      const data = await response.json().catch(() => ({ error: 'Сервер вернул неожиданный ответ' }));
 
       if (response.ok && (data.cards || data.summary)) {
-        onUploadSuccess(data);
+        // Проверяем что карточки действительно есть
+        if (data.cards && data.cards.length === 0) {
+          setEmptyResult(true);
+        } else {
+          onUploadSuccess(data);
+        }
+      } else if (response.status >= 500 || response.status === 0) {
+        // Сбой сервера или сети — graceful degradation
+        setUploadError(
+          'Сервис генерации временно недоступен. Вы можете добавить карточки вручную в разделе «Управление карточками».'
+        );
+      } else if (response.status === 408 || data.error?.includes('время')) {
+        setUploadError('Превышено время ожидания ответа от ИИ. Попробуйте снова или используйте меньший файл.');
       } else {
         const errorMessage = data.error || data.message || `Неизвестная ошибка (${response.status})`;
-        alert(`Ошибка: ${errorMessage}`);
+        setUploadError(`Ошибка: ${errorMessage}`);
       }
     } catch (error: any) {
       console.error('Upload error:', error);
-      alert(`Ошибка соединения: ${error.message}`);
+      // Сетевая ошибка — деградированный режим
+      setUploadError(
+        'Не удалось связаться с сервером. Проверьте соединение или попробуйте позже. Карточки можно добавить вручную.'
+      );
     } finally {
       setLoading(false);
     }
@@ -76,6 +101,59 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
 
   return (
     <div className="upload-container">
+      {/* Блок ошибки — показывается вместо alert() */}
+      {uploadError && (
+        <div
+          className="upload-error-block"
+          role="alert"
+          aria-live="assertive"
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '12px',
+            background: 'rgba(239, 68, 68, 0.12)',
+            border: '1px solid rgba(239, 68, 68, 0.4)',
+            borderRadius: '12px',
+            padding: '16px 20px',
+            marginBottom: '20px',
+            color: 'var(--danger, #ef4444)',
+          }}
+        >
+          <AlertCircle size={22} style={{ flexShrink: 0, marginTop: 1 }} />
+          <div>
+            <strong style={{ display: 'block', marginBottom: 4 }}>Не удалось создать карточки</strong>
+            <span style={{ fontSize: '0.9em', opacity: 0.9 }}>{uploadError}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Блок пустого результата */}
+      {emptyResult && (
+        <div
+          role="alert"
+          aria-live="polite"
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '12px',
+            background: 'rgba(234, 179, 8, 0.12)',
+            border: '1px solid rgba(234, 179, 8, 0.4)',
+            borderRadius: '12px',
+            padding: '16px 20px',
+            marginBottom: '20px',
+            color: '#ca8a04',
+          }}
+        >
+          <AlertCircle size={22} style={{ flexShrink: 0, marginTop: 1 }} />
+          <div>
+            <strong style={{ display: 'block', marginBottom: 4 }}>Карточки не найдены</strong>
+            <span style={{ fontSize: '0.9em' }}>
+              ИИ не смог извлечь учебные концепции из этого текста. Попробуйте другой документ или добавьте карточки вручную.
+            </span>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="upload-form">
         <div className="mode-selector">
           <label className={`mode-option ${mode === 'summary' ? 'active' : ''}`}>
@@ -107,6 +185,8 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
+          role="region"
+          aria-label="Область для загрузки PDF-файла"
         >
           <input
             type="file"
@@ -114,11 +194,12 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
             accept=".pdf"
             onChange={handleFileChange}
             style={{ display: 'none' }}
+            aria-label="Выберите PDF файл"
           />
 
           {!file ? (
             <>
-              <Upload size={48} className="upload-icon" />
+              <Upload size={48} className="upload-icon" aria-hidden="true" />
               <h3>Перетащите PDF сюда</h3>
               <p>или</p>
               <label htmlFor="file-upload" className="btn btn-secondary">
@@ -128,13 +209,13 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
             </>
           ) : (
             <>
-              <FileText size={48} className="file-icon" />
+              <FileText size={48} className="file-icon" aria-hidden="true" />
               <h3>{file.name}</h3>
               <p>{(file.size / 1024 / 1024).toFixed(2)} МБ</p>
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={() => setFile(null)}
+                onClick={() => { setFile(null); setUploadError(null); setEmptyResult(false); }}
               >
                 Изменить файл
               </button>
@@ -143,19 +224,21 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
         </div>
 
         <button
+          id="upload-submit-btn"
           type="submit"
           className="btn btn-primary btn-large"
           disabled={!file || loading}
+          aria-busy={loading}
         >
           {loading ? (
             <>
-              <Loader size={20} className="spinner" />
+              <Loader size={20} className="spinner" aria-hidden="true" />
               <span>Обработка...</span>
             </>
           ) : (
             <>
               <span>Создать карточки</span>
-              <span className="btn-arrow">→</span>
+              <span className="btn-arrow" aria-hidden="true">→</span>
             </>
           )}
         </button>

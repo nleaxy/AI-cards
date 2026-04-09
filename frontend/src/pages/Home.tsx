@@ -1,108 +1,103 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, BookOpen, Target, Zap } from 'lucide-react';
-import { apiFetch } from '../api/client';
+import SEO from '../components/SEO';
 
-interface Stats {
-  total_decks: number;
-  cards_studied: number;
-  max_streak: number;
-}
+// JSON-LD разметка (schema.org/SoftwareApplication) — для структурированных данных в поиске
+const JSON_LD = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'AI Cards',
+  description:
+    'Сервис автоматической генерации учебных карточек из PDF-документов с помощью искусственного интеллекта.',
+  applicationCategory: 'EducationApplication',
+  operatingSystem: 'Web',
+  offers: {
+    '@type': 'Offer',
+    price: '0',
+    priceCurrency: 'RUB',
+  },
+  featureList: [
+    'Загрузка PDF и автоматическое создание карточек',
+    'Режим обучения с интервальным повторением',
+    'Отслеживание прогресса и статистики',
+    'Экспорт карточек в формат CSV (Anki)',
+  ],
+});
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
-  const [stats, setStats] = useState<Stats | null>(null);
-
-  useEffect(() => {
-    // Optional: Only fetch stats if logged in? Or backend handles public access?
-    // Assuming stats endpoint might require auth or return nothing if not auth.
-    // For now, let's try to fetch it.
-    apiFetch('/stats')
-      .then(res => {
-        if (res.ok) return res.json();
-        return null;
-      })
-      .then(data => setStats(data))
-      .catch(err => console.error(err));
-  }, []);
 
   return (
-    <div className="container page-home">
-      <section className="hero">
-        <div className="hero-content">
-          <h1 className="hero-title">
-            Превратите конспекты
-            <span className="gradient-text"> в знания</span>
-          </h1>
-          <p className="hero-subtitle">
-            Загрузите PDF — получите готовые карточки для эффективного обучения
-          </p>
-          <button
-            className="btn btn-primary btn-large"
-            onClick={() => navigate('/upload')}
-          >
-            <Plus size={20} />
-            <span>Создать карточки</span>
-          </button>
-        </div>
+    <>
+      <SEO
+        canonical="/"
+        description="Загрузите PDF-конспект и получите готовые учебные карточки, созданные ИИ. Эффективное обучение с интервальным повторением."
+      />
 
-        <div className="hero-illustration">
-          <div className="floating-card card-1">
-            <BookOpen size={32} />
-          </div>
-          <div className="floating-card card-2">
-            <Target size={32} />
-          </div>
-          <div className="floating-card card-3">
-            <Zap size={32} />
-          </div>
-        </div>
-      </section>
+      {/* JSON-LD структурированные данные для поисковых роботов */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON_LD }}
+      />
 
-      {/* {stats && (
-        <section className="stats-section">
-          <h2>Ваш прогресс</h2>
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-icon">📚</div>
-              <div className="stat-value">{stats.total_decks}</div>
-              <div className="stat-label">Колод создано</div>
+      <div className="container page-home">
+        <section className="hero" aria-label="Главный блок">
+          <div className="hero-content">
+            {/* h1 — один на странице, описывает суть сервиса */}
+            <h1 className="hero-title">
+              Превратите конспекты
+              <span className="gradient-text"> в знания</span>
+            </h1>
+            <p className="hero-subtitle">
+              Загрузите PDF — получите готовые карточки для эффективного обучения с помощью ИИ
+            </p>
+            <button
+              id="hero-cta-btn"
+              className="btn btn-primary btn-large"
+              onClick={() => navigate('/upload')}
+              aria-label="Перейти к загрузке PDF и созданию карточек"
+            >
+              <Plus size={20} aria-hidden="true" />
+              <span>Создать карточки</span>
+            </button>
+          </div>
+
+          <div className="hero-illustration" aria-hidden="true">
+            <div className="floating-card card-1">
+              <BookOpen size={32} />
             </div>
-            <div className="stat-card">
-              <div className="stat-icon">✅</div>
-              <div className="stat-value">{stats.cards_studied}</div>
-              <div className="stat-label">Карточек изучено</div>
+            <div className="floating-card card-2">
+              <Target size={32} />
             </div>
-            <div className="stat-card">
-              <div className="stat-icon">🔥</div>
-              <div className="stat-value">{stats.max_streak}</div>
-              <div className="stat-label">Макс. серия верных</div>
+            <div className="floating-card card-3">
+              <Zap size={32} />
             </div>
           </div>
         </section>
-      )} */}
 
-      <section className="features">
-        <h2>Как это работает</h2>
-        <div className="features-grid">
-          <div className="feature-card">
-            <div className="feature-icon">📤</div>
-            <h3>Загрузите PDF</h3>
-            <p>Выберите конспект или учебный материал</p>
+        <section className="features" aria-label="Как работает сервис">
+          <h2>Как это работает</h2>
+          <div className="features-grid">
+            <article className="feature-card">
+              <div className="feature-icon" aria-hidden="true">📤</div>
+              <h3>Загрузите PDF</h3>
+              <p>Выберите конспект или учебный материал в формате PDF</p>
+            </article>
+            <article className="feature-card">
+              <div className="feature-icon" aria-hidden="true">🤖</div>
+              <h3>ИИ создаст карточки</h3>
+              <p>Автоматический анализ текста и генерация вопросов с ответами</p>
+            </article>
+            <article className="feature-card">
+              <div className="feature-icon" aria-hidden="true">🎯</div>
+              <h3>Учитесь эффективно</h3>
+              <p>Проходите карточки и отслеживайте свой прогресс</p>
+            </article>
           </div>
-          <div className="feature-card">
-            <div className="feature-icon">🤖</div>
-            <h3>ИИ создаст карточки</h3>
-            <p>Автоматический анализ и генерация вопросов</p>
-          </div>
-          <div className="feature-card">
-            <div className="feature-icon">🎯</div>
-            <h3>Учитесь эффективно</h3>
-            <p>Проходите карточки и отслеживайте прогресс</p>
-          </div>
-        </div>
-      </section>
-    </div>
+        </section>
+      </div>
+    </>
   );
 };
 

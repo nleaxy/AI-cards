@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth, User } from '../context/AuthContext';
 import { apiFetch } from '../api/client';
+import SEO from '../components/SEO';
 
 const AdminPanel: React.FC = () => {
     const { token } = useAuth();
@@ -46,6 +47,10 @@ const AdminPanel: React.FC = () => {
 
     return (
         <div className="container" style={{ marginTop: '2rem' }}>
+            <SEO
+                title="Панель администратора"
+                noIndex={true}
+            />
             <h1>Панель администратора</h1>
             <div className="card">
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>

@@ -84,6 +84,7 @@ from api.deck_routes import deck_bp
 from api.stats_routes import stats_bp
 from api.main_routes import main_bp
 from api.file_routes import file_bp
+from api.seo_routes import seo_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(admin_bp)
@@ -91,6 +92,42 @@ app.register_blueprint(deck_bp)
 app.register_blueprint(stats_bp)
 app.register_blueprint(main_bp)
 app.register_blueprint(file_bp)
+app.register_blueprint(seo_bp)
+
+
+# Глобальные обработчики ошибок — корректные HTTP-статусы для SEO
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify({'error': 'Not Found', 'status': 404}), 404
+
+
+@app.errorhandler(403)
+def forbidden(e):
+    return jsonify({'error': 'Forbidden', 'status': 403}), 403
+
+
+@app.errorhandler(410)
+def gone(e):
+    return jsonify({'error': 'Gone', 'status': 410}), 410
+
+
+@app.errorhandler(500)
+def internal_error(e):
+    return jsonify({'error': 'Internal Server Error', 'status': 500}), 500
+
+
+# Обработчики ошибок JWT — приводим все ошибки токенов к 401 (Unauthorized)
+@jwt.invalid_token_loader
+def invalid_token_callback(error_string):
+    return jsonify({'error': 'Invalid token', 'status': 401}), 401
+
+@jwt.expired_token_loader
+def expired_token_callback(jwt_header, jwt_payload):
+    return jsonify({'error': 'Token expired', 'status': 401}), 401
+
+@jwt.unauthorized_loader
+def missing_token_callback(error_string):
+    return jsonify({'error': 'Missing token', 'status': 401}), 401
 
 
 # Swagger JSON spec endpoint

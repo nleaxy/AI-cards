@@ -5,6 +5,7 @@ import ProgressBar from '../components/ProgressBar';
 import { Trophy, RotateCcw, Keyboard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../api/client';
+import SEO from '../components/SEO';
 
 interface CardData {
   id: string;
@@ -185,6 +186,7 @@ const Learn: React.FC = () => {
 
     return (
       <div className="container page-learn">
+        <SEO title="Изучение карточек" noIndex={true} />
         <div className="completion-screen">
           <Trophy size={80} className="trophy-icon" />
           <h1>Отличная работа! 🎉</h1>
@@ -223,6 +225,7 @@ const Learn: React.FC = () => {
 
   return (
     <div className="container page-learn">
+      <SEO title="Изучение" noIndex={true} />
       <ProgressBar
         current={currentIndex + 1}
         total={cards.length}

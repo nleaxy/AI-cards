@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { User, LogOut, Trash2, BarChart2, Calendar, Book, TrendingUp, RotateCcw } from 'lucide-react';
 import ConfirmModal from '../components/ConfirmModal';
 import { apiFetch } from '../api/client';
+import SEO from '../components/SEO';
 
 interface UserStats {
     total_decks: number;
@@ -104,6 +105,12 @@ const Profile: React.FC = () => {
 
     return (
         <div className="container page-profile">
+            <SEO
+                title="Личный кабинет"
+                description="Ваш профиль и статистика обучения в AI Cards."
+                canonical="/profile"
+                noIndex={true}
+            />
             <div className="profile-header">
                 <div className="profile-avatar">
                     <User size={64} />

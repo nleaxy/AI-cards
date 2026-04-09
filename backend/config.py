@@ -28,4 +28,4 @@ class Config:
     JWT_ACCESS_TOKEN_EXPIRES = False  # Tokens never expire (for development)
     
     OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-    MODEL = "mistralai/devstral-small-2505"
+    MODEL = "nvidia/nemotron-3-super-120b-a12b:free"

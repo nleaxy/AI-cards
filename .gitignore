@@ -3,7 +3,6 @@ __pycache__/
 *.py[cod]
 *.env
 .env
-instance/study_cards.db
 venv/
 uploads/
 
@@ -21,7 +20,6 @@ Thumbs.db
 
 # Logs
 *.log
-backend/instance/study_cards.db
 
 # IDEs
 .vscode/
@@ -38,6 +36,10 @@ Desktop.ini
 
 # Database (General)
 *.sqlite3
+instance/
+backend/instance/
+*.db
+*.sqlite
 
 # MinIO local setup
 minio/
