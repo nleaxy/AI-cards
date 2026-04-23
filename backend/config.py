@@ -10,7 +10,7 @@ class Config:
     ALLOWED_EXTENSIONS = {'pdf'}
     
     # Database
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///study_cards.db'
+    SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI') or 'sqlite:///study_cards.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # API Keys and URLs
