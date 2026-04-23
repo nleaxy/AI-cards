@@ -30,6 +30,9 @@ Thumbs.db
 .coverage
 htmlcov/
 coverage/
+playwright-report/
+test-results/
+.playwright-cache/
 
 # System
 Desktop.ini
