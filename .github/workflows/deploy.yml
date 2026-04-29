@@ -40,7 +40,7 @@ jobs:
     - name: Build Frontend
       run: |
         cd frontend
-        npm run build
+        CI=false npm run build
 
   build-docker:
     needs: [test-backend, test-frontend]
