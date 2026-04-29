@@ -23,6 +23,11 @@ services:
       - .env
     volumes:
       - backend_uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/docs')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
     depends_on:
       db:
         condition: service_healthy
