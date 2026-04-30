@@ -49,4 +49,4 @@ jobs:
     - uses: actions/checkout@v3
     - name: Build Docker Images (Dry Run)
       run: |
-        docker-compose build
+        docker compose build
