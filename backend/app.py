@@ -10,7 +10,7 @@ app = Flask(__name__)
 app.config.from_object(Config)
 
 # включаем cors с поддержкой куки - без этого браузер не будет отправлять httponly cookie на другой домен
-CORS(app, supports_credentials=True, origins=["http://localhost:3000"])
+CORS(app, supports_credentials=True, origins=["http://localhost:3000", "http://localhost:3080", "http://localhost"])
 
 # Initialize extensions
 db.init_app(app)

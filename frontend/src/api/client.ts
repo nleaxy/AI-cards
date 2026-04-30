@@ -1,6 +1,6 @@
 import { User } from '../context/AuthContext';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = '/api';
 
 interface AuthResponse {
     access_token: string;
