@@ -11,6 +11,11 @@ A powerful web application that leverages AI to automatically generate study fla
 - **🔄 Anki Support**: Export any deck to CSV format for seamless integration with Anki.
 - **📱 Modern UI**: A responsive, clean interface built with React and TypeScript.
 
+<img width="1901" height="911" alt="изображение" src="https://github.com/user-attachments/assets/8b527975-1dd2-4d90-af0c-53185077d9f2" />
+<img width="1911" height="910" alt="изображение" src="https://github.com/user-attachments/assets/517ce90a-0172-4e66-b104-5dbed71ee0b7" />
+<img width="1914" height="906" alt="изображение" src="https://github.com/user-attachments/assets/dc4c2494-d89c-4cf5-abcb-2730db390dca" />
+
+
 ## 🛠️ Tech Stack
 
 - **Frontend**: React, TypeScript, Lucide React, CSS Modules.
