@@ -1,5 +1,5 @@
-# декораторы для проверки прав доступа (rbac - role based access control)
-# вешаем @admin_required на функцию и она автоматически проверяет роль перед выполнением
+# Decorators for Access Control (RBAC)
+# Applying @admin_required to a route automatically verifies the user's role before execution
 
 from functools import wraps
 from flask import jsonify
@@ -8,18 +8,18 @@ from models import User
 
 
 def role_required(required_role):
-    # декоратор-фабрика: принимает нужную роль и возвращает декоратор-проверку
+    # Decorator factory: accepts a required role and returns the actual decorator
     def decorator(fn):
         @wraps(fn)
-        @jwt_required()  # сначала проверяем что токен валидный вообще
+        @jwt_required()  # First, verify that a valid JWT token is present
         def wrapper(*args, **kwargs):
-            # достаем id пользователя из jwt токена
+            # Extract the user ID from the JWT token identity
             current_user_id = int(get_jwt_identity())
             user = User.query.get(current_user_id)
             if not user:
                 return jsonify({'error': 'User not found'}), 404
 
-            # admin может делать всё, обычный user - только если у него нужная роль
+            # Admin bypasses all checks; regular user is authorized only if they have the required role
             if user.role != required_role and user.role != 'admin':
                 return jsonify({'error': 'Insufficient permissions'}), 403
 

@@ -1,17 +1,17 @@
-# маршрут для проверки что сервер запущен и работает
+# Route to check that the server is up and running
 
 from flask import Blueprint, jsonify
 from config import Config
 
-# blueprint с общим префиксом /api
+# Blueprint with common prefix /api
 main_bp = Blueprint('main', __name__, url_prefix='/api')
 
 
 @main_bp.route('/health', methods=['GET'])
 def health_check():
-    # простая проверка что api живой - фронтенд может отсюда узнать статус сервера
+    # Simple health check - frontend can query this to check API server status
     return jsonify({
         'status': 'healthy',
         'message': 'Study Cards API is running',
-        'api_key_configured': bool(Config.API_KEY)  # есть ли ключ для ai
+        'api_key_configured': bool(Config.API_KEY)  # checks if the AI API key is configured
     }), 200

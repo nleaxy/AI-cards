@@ -1,33 +1,33 @@
-# Используем официальный образ Python на базе легковесного Alpine или slim
+# Use the official slim Python image (smaller download, faster builds)
 FROM python:3.11-slim
 
-# Устанавливаем рабочую директорию
+# Set the working directory inside the container
 WORKDIR /app
 
-# Устанавливаем системные зависимости, необходимые для psycopg2 и других библиотек компиляции (если понадобится)
+# Install system dependencies needed by psycopg2 (PostgreSQL driver)
 RUN apt-get update && apt-get install -y \
     gcc \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Копируем файл зависимостей
+# Copy only the requirements file first so Docker can cache the pip install layer.
+# If only source code changes, dependencies won't be reinstalled.
 COPY requirements.txt .
 
-# Устанавливаем зависимости
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем весь исходный код приложения
+# Copy the rest of the application source
 COPY . .
 
-# Создаем папку для загрузок на всякий случай
+# Create uploads directory
 RUN mkdir -p uploads
 
-# Указываем пользователя без root прав для безопасности (опционально, но хорошая практика)
+# Uncomment to run as a non-root user (recommended for production)
 # RUN useradd -m myuser
 # USER myuser
 
-# Открываем порт 5000
 EXPOSE 5000
 
-# Запускаем Gunicorn сервер вместо встроенного Flask сервера для продакшн-уровня
+# Run with Gunicorn instead of the Flask dev server; 3 worker processes
 CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "3", "app:app"]
+

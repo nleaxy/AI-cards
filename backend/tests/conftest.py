@@ -1,4 +1,4 @@
-# Базовые настройки тестов и фикстуры, включая изолированную БД в памяти
+# Base test fixtures and configuration, including an isolated in-memory database
 import pytest
 import sys
 import os
@@ -8,7 +8,7 @@ from models import db
 from config import Config
 
 class TestConfig(Config):
-    # Конфигурация приложения специально для тестов (БД в оперативке, токены)
+    # Test-specific app configuration (in-memory DB, test secrets)
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -18,13 +18,13 @@ class TestConfig(Config):
 
 @pytest.fixture
 def app():
-    # Создает само приложение и все таблицы в тестовой базе данных
+    # Create the app and all tables in the test database
     flask_app.config.from_object(TestConfig)
     with flask_app.app_context():
         db.create_all()
         from sqlalchemy import text
         with db.engine.connect() as conn:
-            # Ручное создание/обновление таблиц и колонок для совместимости
+            # Manually add columns/tables that might not exist in the test schema
             try:
                 conn.execute(text("ALTER TABLE decks ADD COLUMN emoji VARCHAR(10)"))
                 conn.commit()
@@ -57,23 +57,23 @@ def app():
             
         yield flask_app
         
-        # Полная очистка состояния после завершения теста
+        # Full teardown after each test
         db.session.remove()
         db.drop_all()
 
 @pytest.fixture
 def client(app):
-    # Имитирует браузер (клиента) для отправки HTTP-запросов к нашему API
+    # HTTP test client that simulates browser requests to the API
     return app.test_client()
 
 @pytest.fixture
 def runner(app):
-    # Утилита для тестирования командной строки Flask
+    # Flask CLI test runner
     return app.test_cli_runner()
 
 @pytest.fixture
 def test_user(client):
-    # Автоматически регистрирует обычного тестового пользователя в БД
+    # Register a regular test user in the database
     from models import db, User
     import werkzeug.security as ws
     with flask_app.app_context():
@@ -89,7 +89,7 @@ def test_user(client):
 
 @pytest.fixture
 def auth_headers(client, test_user):
-    # Авторизует тестового юзера и возвращает заголовки с Access Token
+    # Log in as the test user and return Authorization headers with the access token
     response = client.post('/api/auth/login', json={
         'username': test_user['username'],
         'password': test_user['password']
@@ -99,7 +99,7 @@ def auth_headers(client, test_user):
 
 @pytest.fixture
 def admin_user(client):
-    # Создает аккаунт с правами администратора
+    # Create an admin account
     from models import db, User
     import werkzeug.security as ws
     with flask_app.app_context():
@@ -115,7 +115,7 @@ def admin_user(client):
 
 @pytest.fixture
 def admin_headers(client, admin_user):
-    # Авторизует админа и возвращает токен доступа
+    # Log in as admin and return the access token headers
     response = client.post('/api/auth/login', json={
         'username': admin_user['username'],
         'password': admin_user['password']

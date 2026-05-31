@@ -3,10 +3,10 @@ from models import db, User
 
 def promote_user(username):
     with app.app_context():
-        # Находим пользователя по имени
+        # Find user by username
         user = User.query.filter_by(username=username).first()
         if user:
-            # Меняем роль на admin
+            # Change role to admin
             user.role = 'admin'
             db.session.commit()
             print(f"Успешно! Пользователь '{username}' теперь администратор.")
