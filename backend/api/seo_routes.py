@@ -1,10 +1,10 @@
-# маршруты для SEO-файлов: robots.txt и sitemap.xml
+# SEO-related endpoints: robots.txt and sitemap.xml
 from flask import Blueprint, Response, jsonify
 from datetime import datetime
 
 seo_bp = Blueprint('seo', __name__)
 
-# указываем поисковым роботам что индексировать
+# Instruct search bots on indexing permissions
 @seo_bp.route('/robots.txt', methods=['GET'])
 def robots_txt():
     content = """User-agent: *
@@ -24,7 +24,7 @@ Sitemap: http://localhost:5000/sitemap.xml
     return Response(content, mimetype='text/plain')
 
 
-# для поисковых роботов, перечисляем публичные страницы
+# Generate XML sitemap listing public pages for search crawlers
 @seo_bp.route('/sitemap.xml', methods=['GET'])
 def sitemap_xml():
     lastmod = datetime.utcnow().strftime('%Y-%m-%d')

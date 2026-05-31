@@ -1,17 +1,17 @@
-# репозиторий для карточек - простой crud
+# Repository for Cards - handles basic database operations
 
 from models import db, Card
 
 
 class CardRepository:
     def get_by_id(self, card_id):
-        # ищем карточку по id
+        # Retrieve a card by its ID
         return Card.query.get(card_id)
 
     def add(self, card):
-        # добавляем карточку в сессию бд
+        # Add a card to the database session
         db.session.add(card)
 
     def delete(self, card):
-        # помечаем карточку для удаления
+        # Delete a card from the database session
         db.session.delete(card)

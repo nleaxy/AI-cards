@@ -1,4 +1,6 @@
-node_modules/
-build/
-.env
-.DS_Store
+# Exclude heavy and unnecessary folders from Docker build context
+
+node_modules/ # Exclude local dependencies. Docker will install them inside the container during build.
+build/        # Exclude local build directory; new build will be generated inside the container.
+.env          # Exclude environment secrets.
+.DS_Store     # Exclude macOS system files.

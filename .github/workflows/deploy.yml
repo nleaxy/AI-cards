@@ -1,5 +1,6 @@
 name: CI/CD Pipeline
 
+# triggers
 on:
   push:
     branches: [ "main" ]
@@ -7,24 +8,28 @@ on:
     branches: [ "main" ]
 
 jobs:
+  # 1 - test backend
   test-backend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest # vm on ubuntu
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v3 # download code from repo to vm
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.11'
+        python-version: '3.11' # downloading python
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r backend/requirements.txt
+        pip install -r backend/requirements.txt # Ставим все нужные библиотеки
     - name: Run Backend Tests
       run: |
         cd backend
+        # ЛИНТЕР: Проверка качества кода (отсутствие опечаток и грубых ошибок синтаксиса)
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || echo "Linter warnings found"
+        # ТЕСТЫ: Проверка работоспособности логики API
         pytest --cov=api tests/ || echo "Tests failed or not found, but continuing for lab purposes."
 
+  # 2 - test frontend
   test-frontend:
     runs-on: ubuntu-latest
     steps:
@@ -32,21 +37,24 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '18'
+        node-version: '18' # downloading node js
     - name: Install dependencies
       run: |
         cd frontend
-        npm ci --legacy-peer-deps
+        npm ci --legacy-peer-deps 
     - name: Build Frontend
       run: |
         cd frontend
         CI=false npm run build
 
+  # 3 - docker images
   build-docker:
-    needs: [test-backend, test-frontend]
+    needs: [test-backend, test-frontend] 
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - name: Build Docker Images (Dry Run)
       run: |
+        # Пробная сборка всех контейнеров проекта для гарантии того, 
+        # что они соберутся и на реальном сервере
         docker compose build

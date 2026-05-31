@@ -6,23 +6,23 @@ from typing import Optional
 from config import Config
 
 
-# --- Вспомогательные функции ---
+# --- Helper Functions ---
 
 def _call_api_with_retry(payload: dict, max_retries: int = 3) -> dict:
     """
-    Выполняет POST-запрос к OpenRouter API с логикой повторных попыток.
+    Performs a POST request to the OpenRouter API with retry logic.
 
-    Обрабатывает:
-    - 429 Too Many Requests — rate limit: ждем Retry-After или exponential backoff
-    - 5xx Server Error   — временный сбой: повторная попытка через задержку
-    - сетевые ошибки     — RequestException: повторная попытка
+    Handles:
+    - 429 Too Many Requests (rate limit): waits for Retry-After header or applies exponential backoff.
+    - 5xx Server Errors (temporary server issue): retries after a delay.
+    - Network errors (RequestException): retries.
 
     Args:
-        payload: тело запроса для API
-        max_retries: максимальное число повторных попыток (не считая первую)
+        payload: The request body payload for the API.
+        max_retries: The maximum number of retry attempts (excluding the initial request).
 
     Returns:
-        dict с ключом 'data' (ответ API) или 'error' (сообщение об ошибке)
+        dict: A dictionary containing 'data' (API response) or 'error' (error message).
     """
     headers = {
         "Authorization": f"Bearer {Config.API_KEY}",
@@ -41,16 +41,16 @@ def _call_api_with_retry(payload: dict, max_retries: int = 3) -> dict:
                 timeout=60
             )
 
-            # Rate limit — используем Retry-After если есть, иначе backoff
+            # Rate limit - use Retry-After if available, otherwise fall back to exponential backoff
             if response.status_code == 429:
                 retry_after = int(response.headers.get('Retry-After', 2 ** attempt))
                 print(f"[ai_service] Rate limited (429). Waiting {retry_after}s before retry {attempt+1}/{max_retries}")
                 if attempt < max_retries:
-                    time.sleep(min(retry_after, 30))  # не ждем больше 30 секунд
+                    time.sleep(min(retry_after, 30))
                     continue
                 return {"error": "Превышен лимит запросов к API ИИ. Попробуйте через несколько минут."}
 
-            # Временная ошибка на стороне сервера — повторяем
+            # Temporary server error - retry
             if response.status_code >= 500:
                 wait = 2 ** attempt  # exponential backoff: 1s, 2s, 4s
                 print(f"[ai_service] Server error {response.status_code}. Waiting {wait}s, attempt {attempt+1}/{max_retries}")
@@ -86,8 +86,8 @@ def _call_api_with_retry(payload: dict, max_retries: int = 3) -> dict:
 
 
 def _parse_json_response(raw: str) -> Optional[list]:
-    """Парсит JSON из ответа API, очищая markdown-разметку."""
-    # Убираем markdown code blocks
+    """Parses JSON from the API response, stripping any markdown code block wrappers."""
+    # Strip markdown code blocks
     content = raw.strip()
     if content.startswith('```json'):
         content = content[7:]
@@ -101,7 +101,7 @@ def _parse_json_response(raw: str) -> Optional[list]:
         return json.loads(content)
     except json.JSONDecodeError as e:
         print(f"[ai_service] JSON parse error: {e}")
-        # Пробуем исправить неэкранированные backslash (LaTeX и т.д.)
+        # Attempt to repair unescaped backslashes (e.g., in LaTeX formulas)
         try:
             fixed = re.sub(r'\\(?![/u"\\bfnrt])', r'\\\\', content)
             result = json.loads(fixed)
@@ -113,32 +113,26 @@ def _parse_json_response(raw: str) -> Optional[list]:
             return None
 
 
-# --- Публичный API ---
+# --- Public API ---
 
 def generate_cards_from_text(text: str, mode: str = 'summary') -> dict:
     """
-    Генерация учебных карточек из текста с помощью AI (OpenRouter).
-
-    Реализует:
-    - серверный слой интеграции (5.2)
-    - работу с ключами через Config / env (5.3)
-    - retry с exponential backoff при 429 и 5xx (5.4)
-    - нормализацию ответа в формат приложения (5.5)
+    Generates study cards from the provided text using AI (OpenRouter).
 
     Args:
-        text: Текст для анализа
-        mode: 'summary' — с кратким обзором, 'direct' — только карточки
+        text: Input text to analyze.
+        mode: 'summary' (generate cards + overview) or 'direct' (generate cards only).
 
     Returns:
-        dict: {'success': True, 'cards': [...], 'total_cards': int} или {'error': str}
+        dict: {'success': True, 'cards': [...], 'total_cards': int} or {'error': str}.
     """
     if not Config.API_KEY:
-        return {"error": "API_KEY не настроен на сервере"}
+        return {"error": "API_KEY is not configured on the server"}
 
     if not text or not text.strip():
-        return {"error": "Текст не может быть пустым"}
+        return {"error": "Text cannot be empty"}
 
-    # Ограничиваем входной текст (~30к символов ≈ 8k токенов)
+    # Limit input text size (~30k characters ≈ 8k tokens)
     max_chars = 30000
     if len(text) > max_chars:
         text = text[:max_chars] + "..."
@@ -180,7 +174,6 @@ def generate_cards_from_text(text: str, mode: str = 'summary') -> dict:
         "temperature": 0.7,
     }
 
-    # Вызов с retry
     api_result = _call_api_with_retry(cards_payload)
     if "error" in api_result:
         return api_result
@@ -196,7 +189,7 @@ def generate_cards_from_text(text: str, mode: str = 'summary') -> dict:
     if cards is None:
         return {"error": "Не удалось распарсить ответ AI. Попробуйте снова."}
 
-    # Нормализуем формат: добавляем id каждой карточке
+    # Assign sequential IDs to each card
     for idx, card in enumerate(cards):
         card['id'] = idx + 1
 
@@ -206,7 +199,7 @@ def generate_cards_from_text(text: str, mode: str = 'summary') -> dict:
         "total_cards": len(cards)
     }
 
-    # Режим с обзором — генерируем краткую сводку
+    # Summary mode - generate a brief topic overview in addition to cards
     if mode == 'summary':
         summary_prompt = f"""Проанализируй следующий учебный материал и создай краткий обзор основных тем.
 
@@ -256,7 +249,7 @@ def generate_cards_from_text(text: str, mode: str = 'summary') -> dict:
                     "source": "Весь документ"
                 }]
         else:
-            # Ошибка обзора не критична — карточки уже созданы
+            # Summary generation failure is non-critical - cards were already created
             result['summary'] = [{
                 "title": "Обзор недоступен",
                 "content": "Не удалось сгенерировать обзор, но карточки созданы успешно",
@@ -267,7 +260,7 @@ def generate_cards_from_text(text: str, mode: str = 'summary') -> dict:
 
 
 def get_mock_stats():
-    """Заглушка для статистики (будет заменена на реальные данные из БД)"""
+    """Mock statistics endpoint (to be replaced with actual database data)."""
     return {
         'total_decks': 0,
         'cards_studied': 0,

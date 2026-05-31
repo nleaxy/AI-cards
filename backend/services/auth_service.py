@@ -1,5 +1,5 @@
-# сервис авторизации - вся логика регистрации, входа и работы с токенами
-# сервис не знает про http, он работает только с данными и возвращает результат
+# Authentication Service - handles registration, login, token refresh, and logout
+# Decoupled from the HTTP layer; only works with inputs and returns dicts.
 
 from datetime import datetime, timedelta
 import secrets
@@ -8,35 +8,33 @@ from models import User, RefreshToken, UserStats, db
 
 
 class AuthService:
-    # получает репозитории через конструктор - это и есть dependency injection
+    # Receives repository instances via constructor injection
     def __init__(self, user_repo, token_repo, stats_repo):
-        self.user_repo = user_repo    # для работы с таблицей users
-        self.token_repo = token_repo  # для работы с таблицей refresh_tokens
-        self.stats_repo = stats_repo  # для создания начальной статистики
+        self.user_repo = user_repo    # users table
+        self.token_repo = token_repo  # refresh_tokens table
+        self.stats_repo = stats_repo  # initialize user stats on registration
 
     def register(self, username, email, password):
-        # регистрация: проверяем что логин и email свободны, создаем юзера и выдаем токены
+        # Verify uniqueness of username and email, create user, issue token pair
         if self.user_repo.get_by_username(username):
             return {'error': 'Username already exists'}, 400
         if self.user_repo.get_by_email(email):
             return {'error': 'Email already exists'}, 400
 
-        # создаем пользователя и хэшируем пароль (никогда не храним пароль в открытом виде)
         new_user = User(username=username, email=email)
         new_user.set_password(password)
         self.user_repo.add(new_user)
-        db.session.flush()  # flush чтобы получить id нового пользователя до commit
+        db.session.flush()  # flush to get the auto-incremented user ID
 
-        # создаем пустую запись статистики для нового пользователя
+        # Create an empty stats record for the new user
         user_stats = UserStats(user_id=new_user.id)
         self.stats_repo.add_stats(user_stats)
         db.session.commit()
 
-        # генерируем access token (jwt) и refresh token (случайная строка)
         access_token = create_access_token(identity=str(new_user.id))
-        refresh_token = secrets.token_hex(32)  # 64-символьная случайная строка
+        refresh_token = secrets.token_hex(32)  # 64-char random hex string
 
-        # сохраняем refresh токен в базу с датой истечения
+        # Persist the refresh token with a 7-day TTL
         new_refresh_token = RefreshToken(
             token=refresh_token,
             user_id=new_user.id,
@@ -53,16 +51,15 @@ class AuthService:
         }, 201
 
     def login(self, username, password):
-        # вход: проверяем пароль и выдаем новую пару токенов
+        # Validate credentials and return a new token pair
         user = self.user_repo.get_by_username(username)
         if not user or not user.check_password(password):
-            # возвращаем одну и ту же ошибку чтобы нельзя было угадать что именно неверно
+            # Generic message to prevent username enumeration
             return {'error': 'Invalid username or password'}, 401
 
         access_token = create_access_token(identity=str(user.id))
         refresh_token = secrets.token_hex(32)
 
-        # сохраняем новый refresh токен в базу
         new_refresh_token = RefreshToken(
             token=refresh_token,
             user_id=user.id,
@@ -78,25 +75,21 @@ class AuthService:
         }, 200
 
     def refresh(self, refresh_token):
-        # обновление токена: проверяем refresh токен и выдаем новую пару
-        # это называется "ротация токенов" - старый уничтожается, выдается новый
+        # Token rotation: validate the old refresh token, issue a new pair
         if not refresh_token:
             return {'error': 'Refresh token missing'}, 400
 
-        # ищем токен в базе и проверяем что он не аннулирован
         token_entry = self.token_repo.get_valid_token(refresh_token)
         if not token_entry:
             return {'error': 'Invalid refresh token'}, 401
 
-        # проверяем что срок жизни токена не истек
         if token_entry.expires_at < datetime.utcnow():
             return {'error': 'Refresh token expired'}, 401
 
-        # аннулируем старый refresh токен (ротация - ключевая фишка безопасности)
+        # Revoke the old token and issue a new one (enforces secure rotation)
         new_refresh_token_str = secrets.token_hex(32)
         token_entry.revoked = True
 
-        # создаем новый refresh токен
         new_token_entry = RefreshToken(
             token=new_refresh_token_str,
             user_id=token_entry.user_id,
@@ -105,7 +98,6 @@ class AuthService:
         self.token_repo.add(new_token_entry)
         db.session.commit()
 
-        # генерируем новый access token
         access_token = create_access_token(identity=str(token_entry.user_id))
 
         return {
@@ -114,8 +106,7 @@ class AuthService:
         }, 200
 
     def logout(self, refresh_token):
-        # выход: помечаем refresh токен как revoked в базе данных
-        # даже если у кого-то есть этот токен - он больше не сработает
+        # Mark the refresh token as revoked so it can't be reused
         if refresh_token:
             token_entry = self.token_repo.get_token(refresh_token)
             if token_entry:
@@ -124,7 +115,7 @@ class AuthService:
         return {'message': 'Logged out successfully'}, 200
 
     def delete_user(self, user_id):
-        # удаление аккаунта - каскадно удаляются все колоды и карточки пользователя
+        # Delete the account; cascades to all user decks and cards
         user = self.user_repo.get_by_id(user_id)
         if not user:
             return {'error': 'User not found'}, 404

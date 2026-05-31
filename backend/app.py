@@ -9,7 +9,7 @@ from models import db
 app = Flask(__name__)
 app.config.from_object(Config)
 
-# включаем cors с поддержкой куки - без этого браузер не будет отправлять httponly cookie на другой домен
+# Enable CORS with credentials support - without this, the browser will not send HttpOnly cookies to a different domain
 CORS(app, supports_credentials=True, origins=["http://localhost:3000", "http://localhost:3080", "http://localhost"])
 
 # Initialize extensions
@@ -95,7 +95,7 @@ app.register_blueprint(file_bp)
 app.register_blueprint(seo_bp)
 
 
-# Глобальные обработчики ошибок — корректные HTTP-статусы для SEO
+# Global error handlers - returns proper HTTP statuses for SEO purposes
 @app.errorhandler(404)
 def not_found(e):
     return jsonify({'error': 'Not Found', 'status': 404}), 404
@@ -116,7 +116,7 @@ def internal_error(e):
     return jsonify({'error': 'Internal Server Error', 'status': 500}), 500
 
 
-# Обработчики ошибок JWT — приводим все ошибки токенов к 401 (Unauthorized)
+# JWT error handlers - normalizes all token errors to 401 (Unauthorized)
 @jwt.invalid_token_loader
 def invalid_token_callback(error_string):
     return jsonify({'error': 'Invalid token', 'status': 401}), 401
@@ -137,7 +137,7 @@ def swagger_spec():
         "openapi": "3.0.0",
         "info": {
             "title": "Study Cards API",
-            "description": "API для создания учебных карточек из PDF с использованием AI",
+            "description": "API for creating study cards from PDF files using AI",
             "version": "2.0.0"
         },
         "servers": [

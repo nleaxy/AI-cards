@@ -59,9 +59,9 @@ class Deck(db.Model):
     last_studied = db.Column(db.DateTime)
     emoji = db.Column(db.String(10))
     
-    # Связь с карточками
+    # Relationship with cards
     cards = db.relationship('Card', backref='deck', lazy=True, cascade='all, delete-orphan')
-    # Связь с прикреплёнными файлами
+    # Relationship with attached files
     files = db.relationship('DeckFile', backref='deck', lazy=True, cascade='all, delete-orphan')
     
     def to_dict(self, include_cards=False):
@@ -90,7 +90,7 @@ class Card(db.Model):
     deck_id = db.Column(db.Integer, db.ForeignKey('decks.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Статистика по карточке
+    # Card learning statistics
     times_studied = db.Column(db.Integer, default=0)
     times_correct = db.Column(db.Integer, default=0)
     last_studied = db.Column(db.DateTime)
@@ -113,8 +113,8 @@ class DeckFile(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     deck_id = db.Column(db.Integer, db.ForeignKey('decks.id'), nullable=False)
-    object_name = db.Column(db.String(500), nullable=False)  # ключ в MinIO
-    original_name = db.Column(db.String(500), nullable=False)  # оригинальное имя файла
+    object_name = db.Column(db.String(500), nullable=False)  # Object key in MinIO
+    original_name = db.Column(db.String(500), nullable=False)  # Original file name
     size_bytes = db.Column(db.Integer, nullable=False)
     mime_type = db.Column(db.String(100))
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -167,7 +167,7 @@ class UserStats(db.Model):
     # Relationship is now defined on User side with cascade
     
     def get_unique_cards_studied(self):
-        """Получить список уникальных изученных карточек"""
+        """Retrieve the list of unique studied card IDs."""
         try:
             data = json.loads(self.unique_cards_studied)
             return [int(x) for x in data]
@@ -175,11 +175,11 @@ class UserStats(db.Model):
             return []
     
     def set_unique_cards_studied(self, card_ids):
-        """Установить список уникальных изученных карточек"""
+        """Set the list of unique studied card IDs."""
         self.unique_cards_studied = json.dumps(list(set([int(x) for x in card_ids])))
     
     def add_unique_card(self, card_id):
-        """Добавить карточку в изученные"""
+        """Add a card to the unique studied list."""
         try:
             card_id = int(card_id)
             cards = self.get_unique_cards_studied()
@@ -192,7 +192,7 @@ class UserStats(db.Model):
             return False
     
     def get_current_streak_cards(self):
-        """Получить список карточек в текущей серии"""
+        """Retrieve the list of card IDs in the current correct streak."""
         try:
             data = json.loads(self.current_streak_cards)
             return [int(x) for x in data]
@@ -200,16 +200,16 @@ class UserStats(db.Model):
             return []
     
     def set_current_streak_cards(self, card_ids):
-        """Установить список карточек в текущей серии"""
+        """Set the list of card IDs in the current correct streak."""
         self.current_streak_cards = json.dumps([int(x) for x in card_ids])
     
     def reset_streak(self):
-        """Сбросить текущую серию"""
+        """Reset the current correct streak."""
         self.current_streak = 0
         self.set_current_streak_cards([])
     
     def increment_streak(self, card_id):
-        """Увеличить серию если карточка уникальная для текущей серии"""
+        """Increment the streak if the card is unique to the current streak."""
         try:
             card_id = int(card_id)
             streak_cards = self.get_current_streak_cards()
@@ -218,7 +218,7 @@ class UserStats(db.Model):
                 self.set_current_streak_cards(streak_cards)
                 self.current_streak = len(streak_cards)
                 
-                # Обновляем максимальную серию если превышена
+                # Update the max streak if the current streak exceeds it
                 if self.current_streak > self.max_correct_streak:
                     self.max_correct_streak = self.current_streak
                 
@@ -228,7 +228,7 @@ class UserStats(db.Model):
             return False
     
     def reset_stats(self):
-        """Полный сброс статистики"""
+        """Fully reset all user statistics."""
         self.total_decks_created = 0
         self.set_unique_cards_studied([])
         self.max_correct_streak = 0
